@@ -39,7 +39,7 @@ Tinytest.add('ivansglazunov:trees getTreeKey getTreeName', function (assert) {
   assert.equal('a', Test.getTreeName('_a'));
 });
 
-Tinytest.add('ivansglazunov:trees inTree setTree getTree goToTree unsetTree incrementTreeInCollection incrementTree', function (assert) {
+Tinytest.add('ivansglazunov:trees inTree setTree getTree goToTree unsetTree', function (assert) {
   var test = Random.id();
   var Test = generateCollection(test);
 
@@ -55,15 +55,10 @@ Tinytest.add('ivansglazunov:trees inTree setTree getTree goToTree unsetTree incr
   assert.isTrue(document.inTree('a'));
   var tree = document.getTree('a', id);
   assert.equal(tree._id, id);
-  assert.equal(tree.index, 0);
   assert.equal(document, document.goToTree('a', id));
-  assert.equal(document.incrementTreeInCollection(Test, 'a'), 1);
-  assert.equal(document.incrementTree('a'), 1);
   document.unsetTree('a', id);
   var document = Test.findOne('b');
   assert.isFalse(document.inTree('a'));
   var document = Test.findOne('b');
   assert.equal(document._a.length, 0);
-  assert.equal(document.incrementTreeInCollection(Test, 'a'), 0);
-  assert.equal(document.incrementTree('a'), 0);
 });

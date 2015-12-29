@@ -7,9 +7,6 @@ Trees.Schema = new SimpleSchema({
   },
   dbref: {
     type: DBRef.Schema
-  },
-  index: {
-    type: Number
   }
 });
 
@@ -65,7 +62,7 @@ Meteor.Collection.prototype.attachTree = function(treeName, documentKey) {
     },
     setTree: function(treeName, dbref) {
       var $push = {};
-      $push[collection.getTreeKey(treeName)] = { _id: Random.id(), dbref: DBRef.new(dbref), index: this.incrementTree(treeName) };
+      $push[collection.getTreeKey(treeName)] = { _id: Random.id(), dbref: DBRef.new(dbref) };
       collection.update(this._id, { $push: $push });
       return $push[collection.getTreeKey(treeName)]._id;
     },
@@ -80,35 +77,10 @@ Meteor.Collection.prototype.attachTree = function(treeName, documentKey) {
       $pull[collection.getTreeKey(treeName)] = { _id: id };
       collection.update(this._id, { $pull: $pull });
     },
-    moveInTree: function(treeName, id, index) {
-      var tree = this.getTree(treeName, id);
-      this.unsetTree(treeName, id);
-      tree.dbref = DBRef.new(tree.dbref);
-      tree.index = index;
-      var $push = {};
-      $push[collection.getTreeKey(treeName)] = tree;
-      collection.update(this._id, { $push: $push });
-    },
     findTree: function(collection, treeName, query, options) {
       var query = {};
       query[collection.getTreeKey(treeName)] = { dbref: this.DBRef() };
       return collection.find(query);
-    },
-    incrementTreeInCollection: function(collection, treeName) {
-      var query = {};
-      query[collection.getTreeKey(treeName)] = { $exists: true };
-      var sort = {};
-      sort[collection.getTreeKey(treeName)+'.index'] = -1;
-      var document = collection.findOne(query, { sort: sort });
-      if (!lodash.isEmpty(document)) var max = lodash.max(lodash.map(document[collection.getTreeKey(treeName)], function(tree) { return tree.index; }));
-      if (lodash.isNumber(max) && lodash.isFinite(max)) return max+1;
-      return 0;
-    },
-    incrementTree: function(treeName) {
-      var collections = Trees.attachedCollections();
-      var results = [];
-      for (var c in collections) results.push(this.incrementTreeInCollection(collections[c], treeName));
-      return lodash.max(results);
     }
   });
 };
