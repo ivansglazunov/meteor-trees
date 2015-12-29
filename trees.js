@@ -10,7 +10,19 @@ Trees.Schema = new SimpleSchema({
   }
 });
 
-Trees.attachedCollections = function() {
+Trees.defaultSchema = {
+  type: [Trees.Schema],
+  optional: true,
+  defaultValue: []
+};
+
+var defineCustomSchemas = {};
+
+Trees.defineCustomSchema = function(treeName, schema) {
+  defineCustomSchemas[treeName] = schema;
+};
+
+Trees.defineCollections = function() {
   var result = [];
   for (var key in collections) result.push(Meteor.Collection.get(key));
   return result;
@@ -35,6 +47,15 @@ var findTree = function(treeName, query, options) {
   return cursors;
 };
 
+var getTreesSchema = function() {
+  var schema = {};
+  for (var name in this._treeNames) {
+    if (defineCustomSchemas.hasOwnProperty(name)) schema[this._treeNames[name]] = lodash.clone(defineCustomSchemas[name]);
+    else schema[this._treeNames[name]] = lodash.clone(Trees.defaultSchema);
+  }
+  return new SimpleSchema(schema);
+};
+
 collections = {};
 
 Meteor.Collection.prototype.attachTree = function(treeName, documentKey) {
@@ -50,6 +71,8 @@ Meteor.Collection.prototype.attachTree = function(treeName, documentKey) {
 
   var collection = this;
 
+  collection.getTreesSchema = getTreesSchema;
+
   collection.getTreeKey = getTreeKey;
   collection.getTreeName = getTreeName;
 
@@ -60,9 +83,9 @@ Meteor.Collection.prototype.attachTree = function(treeName, documentKey) {
       var document = collection.findOne({ _id: this._id });
       return (!!document && document[collection.getTreeKey(treeName)] && document[collection.getTreeKey(treeName)].length);
     },
-    setTree: function(treeName, dbref) {
+    setTree: function(treeName, dbref, customFields) {
       var $push = {};
-      $push[collection.getTreeKey(treeName)] = { _id: Random.id(), dbref: DBRef.new(dbref) };
+      $push[collection.getTreeKey(treeName)] = lodash.merge({}, customFields, { _id: Random.id(), dbref: DBRef.new(dbref) });
       collection.update(this._id, { $push: $push });
       return $push[collection.getTreeKey(treeName)]._id;
     },

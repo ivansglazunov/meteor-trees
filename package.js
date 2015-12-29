@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ivansglazunov:trees',
-  version: '0.0.1',
+  version: '0.1.0',
   summary: 'Trees of documents.',
   git: 'https://github.com/ivansglazunov/meteor-trees',
   documentation: 'README.md'
