@@ -130,3 +130,6 @@ Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
 * fix `Tree.prototype.links`, now always returns an array
 * removed unnecessary dependence
 * added to the normal selector of removal
+
+#### 0.2.2
+* remove trash
