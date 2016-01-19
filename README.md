@@ -68,7 +68,7 @@ Now you can use the following methods:
 * `comments.collections() => { field: Mongo.Collection }`
 * `comments.insert(document: Document|DBRef, fields: { _ref: DBRef }) => _id: String`
 * `comments.set(document: Document|DBRef, id: String, fields: Object) => _id: String`
-* `comments.remove(document: Document|DBRef, id: String)`
+* `comments.remove(document: Document|DBRef, fields: Object) => Number`
 * `comments.exists(document: Document|DBRef) => Boolean`
 * `comments.links(document: Document) => [Link]`
 * `comments.link(document: Document, id: String) => Link|undefined`
@@ -123,3 +123,10 @@ var DataCommentsSchema = new SimpleSchema({
 // Use in conjunction with existing schemas!
 Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
 ```
+
+## Versions
+
+#### 0.2.1
+* fix `Tree.prototype.links`, now always returns an array
+* removed unnecessary dependence
+* added to the normal selector of removal
