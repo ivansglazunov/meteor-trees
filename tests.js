@@ -1,107 +1,162 @@
-var generateCollection = function(name) {
-  var Test = new Mongo.Collection(name);
+var Checks = new Mongo.Collection('checks');
+Checks.attachDBRef();
 
-  Test.attachDBRef();
-  Test.attachTree('a', '_a');
-  Test.attachSchema(new SimpleSchema([Test.getTreesSchema()]));
+Checks.allow({
+  insert: function (userId, document) {
+    return true;
+  },
+  update: function (userId, document, fields, modifier) {
+    return true;
+  },
+  remove: function () {
+    return true;
+  }
+});
 
-  if (Meteor.isServer) Test.allow({
-    insert: function () {
-      return true;
-    },
-    update: function () {
-      return true;
-    },
-    remove: function () {
-      return true;
-    }
-  });
+var checks = Trees.new('checks');
 
-  return Test;
+var events = {
+  useCollection: false,
+  insert: false, update: false, remove: false
 };
 
-Tinytest.add('ivansglazunov:trees attach', function (assert) {
-  var test = Random.id();
-  var Test = generateCollection(test);
-});
+checks.on('useCollection', function() { events.useCollection = true; });
 
-Tinytest.add('ivansglazunov:trees getTreeKey getTreeName', function (assert) {
-  var test = Random.id();
-  var Test = generateCollection(test);
+checks.useCollection(Checks, '_checks');
 
-  assert.equal('_a', Test.getTreeKey('a'));
-  assert.equal('a', Test.getTreeName('_a'));
-});
+var observer = checks.observe(Checks, Checks.find());
+observer.on('insert', function() { events.insert = true; });
+observer.on('update', function() { events.update = true; });
+observer.on('remove', function() { events.remove = true; });
 
-Tinytest.add('ivansglazunov:trees inTree setTree getTree goToTree unsetTree', function (assert) {
-  var test = Random.id();
-  var Test = generateCollection(test);
-
-  Test.remove('b');
-
-  Test.insert({ _id: 'b' });
-  var document = Test.findOne('b');
-  assert.equal({ _id: 'b', _a: [] }, document);
-  assert.isFalse(document.inTree('a'));
-  var id = document.setTree('a', document.DBRef());
-  assert.isTrue(lodash.isString(id));
-  var document = Test.findOne('b');
-  assert.isTrue(document.inTree('a'));
-  var tree = document.getTree('a', id);
-  assert.equal(tree._id, id);
-  assert.equal(document, document.goToTree('a', id));
-  document.unsetTree('a', id);
-  var document = Test.findOne('b');
-  assert.isFalse(document.inTree('a'));
-  var document = Test.findOne('b');
-  assert.equal(document._a.length, 0);
-});
-
-
-Tinytest.add('ivansglazunov:trees SimpleSchema', function (assert) {
-  var test = Random.id();
-  var Test = new Mongo.Collection(test);
-
-  Trees.defineCustomSchema('a', {
-    type: [
-      new SimpleSchema([
-        // Be sure to add the standard scheme!
-        Trees.Schema,
-        // You can create your own custom fields
-        new SimpleSchema({
-          x0: { type: Number, optional: true, autoValue: function() { if (!this.isSet) return 0; } },
-          x1: { type: Number, optional: true, autoValue: function() { if (!this.isSet) return 0; } },
-          y0: { type: Number, optional: true, autoValue: function() { if (!this.isSet) return 0; } },
-          y1: { type: Number, optional: true, autoValue: function() { if (!this.isSet) return 0; } }
-        })
-      ]),
-    ],
-    optional: true,
-    defaultValue: []
+Tinytest.add('ivansglazunov:trees checks insert', function (assert) {
+  assert.throws(function() {
+    Trees.checkInsert(Checks, {
+      _id: Random.id(), _checks: [{ _id: Random.id() }]
+    });
   });
-
-  Test.attachDBRef();
-  Test.attachTree('a', '_a');
-  Test.attachSchema(new SimpleSchema([Test.getTreesSchema()]));
-
-  if (Meteor.isServer) Test.allow({
-    insert: function () {
-      return true;
-    },
-    update: function () {
-      return true;
-    },
-    remove: function () {
-      return true;
-    }
+  Trees.checkInsert(Checks, {
+    _id: Random.id(), _checks: [{ _id: Random.id(), _ref: DBRef.new(Random.id(), Random.id()) }]
   });
+});
 
-  Test.insert({ _id: 'b' });
-  var document = Test.findOne('b');
-  var id = document.setTree('a', document.DBRef(), { y1: 100, x1: 100 });
-  var document = Test.findOne('b');
-  assert.equal(0, document._a[0].x0);
-  assert.equal(0, document._a[0].y0);
-  assert.equal(100, document._a[0].x1);
-  assert.equal(100, document._a[0].y1);
+Tinytest.add('ivansglazunov:trees checks update links', function (assert) {
+  assert.throws(function() {
+    Trees.checkUpdate(Checks, {}, {
+      $set: { '_checks': [{ _id: Random.id(), _ref: DBRef.new(Random.id(), Random.id()) }] }
+    });
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update link invalid', function (assert) {
+  assert.throws(function() {
+    Trees.checkUpdate(Checks, {}, {
+      $set: { '_checks.0': { _id: Random.id(), _ref: DBRef.new(Random.id(), Random.id()) } }
+    });
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update link valid', function (assert) {
+  var document = { _checks: [{ _id: Random.id(), _ref: DBRef.new(Random.id(), Random.id()) }] };
+  Trees.checkUpdate(Checks, document, {
+    $set: { '_checks.0': document._checks[0] }
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update link._id', function (assert) {
+  assert.throws(function() {
+    Trees.checkUpdate(Checks, {}, {
+      $set: { '_checks.0._id': Random.id() }
+    });
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update link._ref', function (assert) {
+  assert.throws(function() {
+    Trees.checkUpdate(Checks, {}, {
+      $set: { '_checks.0._ref': Random.id() }
+    });
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update link.x', function (assert) {
+  Trees.checkUpdate(Checks, {}, {
+    $set: { '_checks.0.x': Random.id() }
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update push', function (assert) {
+  Trees.checkUpdate(Checks, {}, {
+    $push: { '_checks': { _id: Random.id(), _ref: DBRef.new(Random.id(), Random.id()) } }
+  });
+});
+
+Tinytest.add('ivansglazunov:trees checks update pull', function (assert) {
+  Trees.checkUpdate(Checks, {}, {
+    $pull: { '_checks': { _id: Random.id() } }
+  });
+});
+
+Tinytest.add('ivansglazunov:trees Trees.fields', function (assert) {
+  assert.equal(Trees.fields(Checks), { _checks: checks });
+});
+
+Tinytest.add('ivansglazunov:trees Trees.get', function (assert) {
+  assert.equal(Trees.get('checks'), checks);
+});
+
+Tinytest.add('ivansglazunov:trees Tree.field', function (assert) {
+  assert.equal(checks.field(Checks), '_checks');
+});
+
+Tinytest.add('ivansglazunov:trees Tree.collections', function (assert) {
+  var collections = checks.collections();
+  assert.isTrue(lodash.size(collections) == 1);
+  assert.isTrue(collections.checks == Checks);
+});
+
+var insertLinkId;
+
+Tinytest.add('ivansglazunov:trees insert', function (assert) {
+  Checks.remove('a');
+  Checks.insert({ _id: 'a' });
+
+  assert.throws(function() {
+    checks.insert(Checks.findOne('a'), { x: 123 });
+  });
+  assert.throws(function() {
+    checks.insert(Checks.findOne('a'));
+  });
+  insertLinkId = checks.insert(Checks.findOne('a'), { _ref: Checks.findOne('a').DBRef(), x: 123 });
+});
+
+var updateLinkId;
+Tinytest.add('ivansglazunov:trees set', function (assert) {
+  Checks.remove('b');
+  updateLinkId = Random.id();
+  Checks.insert({ _id: 'b', _checks: [{ _id: updateLinkId, _ref: Checks.findOne('a').DBRef(), x: 123 }] });
+  checks.set(Checks.findOne('b'), updateLinkId, { x: 456 });
+  assert.equal(Checks.findOne('b')._checks[0].x, 456);
+});
+
+Tinytest.add('ivansglazunov:trees link links', function (assert) {
+  assert.equal(checks.link(Checks.findOne('b'), updateLinkId)._id, updateLinkId);
+  assert.length(checks.links(Checks.findOne('b')), 1);
+  assert.equal(checks.links(Checks.findOne('b'))[0]._id, updateLinkId);
+});
+
+Tinytest.add('ivansglazunov:trees remove', function (assert) {
+  Checks.remove('c');
+  Checks.insert({ _id: 'c' });
+  var removeLinkId = checks.insert(Checks.findOne('c'), { _ref: Checks.findOne('c').DBRef() });
+  assert.length(Checks.findOne('c')._checks, 1);
+  checks.remove(Checks.findOne('c'), removeLinkId);
+  assert.length(Checks.findOne('c')._checks, 0);
+});
+
+Tinytest.add('ivansglazunov:trees events', function (assert) {
+  assert.isTrue(events.useCollection);
+  assert.isTrue(events.insert);
+  assert.isTrue(events.update);
+  assert.isTrue(events.remove);
 });
