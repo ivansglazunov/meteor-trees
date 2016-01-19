@@ -68,7 +68,7 @@ Tree.prototype.links = function(document) {
   if (!('DBRef' in document)) throw new Meteor.Error('"DBRef" is not defined in document.','Please use package "ivansglazunov:DBRefs" with method "attachDBRef".');
   var dbref = document.DBRef();
   var field = this.field(Meteor.Collection.get(dbref));
-  return document[field];
+  return (field in document) ? document[field] : [];
 };
 
 // Get document link by id.
@@ -123,8 +123,8 @@ Tree.prototype.set = function(document, id, fields) {
 };
 
 // Remove link in this tree.
-// (document: Document|DBRef, id: String)
-Tree.prototype.remove = function(document, id) {
+// (document: Document|DBRef, fields: Object) => Number
+Tree.prototype.remove = function(document, fields) {
   if (DBRef.isDBRef(document)) {
     var dbref = DBRef.new(document);
     var document = DBRef(dbref);
@@ -132,11 +132,10 @@ Tree.prototype.remove = function(document, id) {
     if (!('DBRef' in document)) throw new Meteor.Error('"DBRef" is not defined in document.','Please use package "ivansglazunov:DBRefs" with method "attachDBRef".');
     var dbref = document.DBRef();
   }
-  var index = this.index(document, id);
   var field = this.field(Meteor.Collection.get(dbref));
   var $pull = {};
-  $pull[field] = { _id: id };
-  Meteor.Collection.get(dbref).update(dbref.$id, { $pull: $pull });
+  $pull[field] = fields;
+  return Meteor.Collection.get(dbref).update(dbref.$id, { $pull: $pull });
 };
 
 // Checks whether the document in the tree.

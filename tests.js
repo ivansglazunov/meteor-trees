@@ -150,7 +150,7 @@ Tinytest.add('ivansglazunov:trees remove', function (assert) {
   Checks.insert({ _id: 'c' });
   var removeLinkId = checks.insert(Checks.findOne('c'), { _ref: Checks.findOne('c').DBRef() });
   assert.length(Checks.findOne('c')._checks, 1);
-  checks.remove(Checks.findOne('c'), removeLinkId);
+  checks.remove(Checks.findOne('c'), { _id: removeLinkId });
   assert.length(Checks.findOne('c')._checks, 0);
 });
 

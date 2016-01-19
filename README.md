@@ -123,3 +123,10 @@ var DataCommentsSchema = new SimpleSchema({
 // Use in conjunction with existing schemas!
 Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
 ```
+
+## Versions
+
+#### 0.2.1
+* fix `Tree.prototype.links`, now always returns an array
+* removed unnecessary dependence
+* added to the normal selector of removal
