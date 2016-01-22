@@ -114,6 +114,10 @@ Tree.prototype.set = function(document, id, fields) {
   var _field = this.field(collection);
   fields._id = document[_field][index]._id;
   fields._link = document[_field][index]._link;
+  if (document[_field][index]._inherit) {
+    fields._inherit = document[_field][index]._inherit;
+    fields.__inherit = document[_field][index].__inherit;
+  }
   modifier.$set[_field+'.'+index] = fields;
   return collection.update(document._id, modifier);
 };
@@ -158,6 +162,12 @@ Tree.prototype.find = function(handler) {
   return result;
 };
 
+// Generate string Link
+// (document: Document, link: Object) => String
+Tree.prototype.Link = function(document, link) {
+  return link._id+"|"+this._name+"|"+document.Link();
+};
+
 // Interface of inheritance.
 // (inheritable: Trees.Tree)
 Tree.prototype.inherit = function(inheritable) {
@@ -170,8 +180,22 @@ Tree.prototype.inherit = function(inheritable) {
     // Insert document in main tree.
     // Check parents in main tree for exists inheritable tree links.
     observer.on('insert', function(link, document) {
-      var links = inheritable.links(Link(link._link));
-      for (var l in links) inheritable.insert(document, links[l]._link, { _inherit: link._link });
+      var parent = Link(link._link);
+      var links = inheritable.links(parent);
+      var docLinks = inheritable.links(document);
+      for (var l in links) {
+        var __inheritFounded = false;
+        var __inherit = links[l].__inherit?links[l].__inherit:inheritable.Link(parent, links[l]);
+        for (var d in docLinks) {
+          if ('__inherit' in docLinks[d]) {
+            if (docLinks[d].__inherit == __inherit)
+              __inheritFounded = true;
+          } else if (inheritable.Link(document, docLinks[d]) == __inherit)
+            __inheritFounded = true;
+        }
+        if (!__inheritFounded)
+          inheritable.insert(document, links[l]._link, { _inherit: inheritable.Link(parent, links[l]), __inherit: links[l].__inherit?links[l].__inherit:inheritable.Link(parent, links[l]) });
+      }
     });
 
     // Remove document from main tree.
@@ -207,8 +231,19 @@ Tree.prototype.inherit = function(inheritable) {
     // Check children in main tree for exists inheritable tree links.
     observer.on('insert', function(link, document) {
       var children = main.children(document);
+      var __inherit = link.__inherit?link.__inherit:inheritable.Link(document, link);
       children.forEach(function(child, collection, field, cursor) {
-        inheritable.insert(child, link._link, { _inherit: document.Link() });
+        var __inheritFounded = false;
+        var childLinks = inheritable.links(child);
+        for (var d in childLinks) {
+          if ('__inherit' in childLinks[d]) {
+            if (childLinks[d].__inherit == __inherit)
+              __inheritFounded = true;
+          } else if (inheritable.Link(child, childLinks[d]) == __inherit)
+            __inheritFounded = true;
+        }
+        if (!__inheritFounded)
+          inheritable.insert(child, link._link, { _inherit: inheritable.Link(document, link), __inherit: __inherit });
       });
     });
 

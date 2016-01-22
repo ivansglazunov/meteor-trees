@@ -129,6 +129,11 @@ Tinytest.add('ivansglazunov:trees checks update pull', function (assert) {
   Trees.checkUpdate(Random.id(), Checks, Checks._transform({ '_checks': [{ _id: id }] }), [], {
     $pull: { '_checks': { _id: id } }
   });
+  assert.throws(function() {
+    Trees.checkUpdate('devil', Checks, Checks._transform({ '_checks': [{ _id: id }] }), [], {
+      $pull: { '_checks': { _id: id } }
+    });
+  });
 });
 
 Tinytest.add('ivansglazunov:trees Trees.fields', function (assert) {

@@ -4,7 +4,7 @@
 meteor add ivansglazunov:trees ivansglazunov:links
 ```
 
-### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.5)
+### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.6)
 
 The universal system of trees.
 
@@ -14,7 +14,7 @@ The universal system of trees.
 * Each link in tree has a unique id
 * Integrity is maintained at [.allow](http://docs.meteor.com/#/full/allow) and [.deny](http://docs.meteor.com/#/full/deny) collection methods
 * Events in the tree attached to the cursor
-* Multi collection [Cursor](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1.Trees.Cursor) on a tree.
+* Multi collection [Cursor](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.6.Trees.Cursor) on a tree.
 
 ### Schema of link in tree:
 ```js
@@ -84,6 +84,7 @@ Now you can use the following methods:
 * `comments.index(document: Document, id: String) => Number|undefined`
 * `comments.children(document: Document, handler: .call(document, query, collection, field))) => Trees.Cursor`
 * `comments.find(handler: (query, collection, field)) => Trees.Cursor`
+* `comments.Link(document: Document, link: Object) => String`
 
 > Congratulations! You are now connected to your collection to the tree!
 
@@ -156,9 +157,13 @@ var DataCommentsSchema = new SimpleSchema({
 Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
 ```
 
-> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.5).
+> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.6).
 
 ## Versions
+
+#### 0.3.6
+* added __inherit field for root inheritance link
+* added protection against recursion
 
 #### 0.3.5
 * add access limitation with handlers

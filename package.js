@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ivansglazunov:trees',
-  version: '0.3.5',
+  version: '0.3.6',
   summary: 'The universal system of trees.',
   git: 'https://github.com/ivansglazunov/meteor-trees',
   documentation: 'README.md'
