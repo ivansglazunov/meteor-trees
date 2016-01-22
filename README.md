@@ -4,7 +4,7 @@
 meteor add ivansglazunov:trees ivansglazunov:dbrefs
 ```
 
-### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.0)
+### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1)
 
 The universal system of trees.
 
@@ -71,8 +71,8 @@ Now you can use the following methods:
 * `comments.field(collection) => String`
 * `comments.collections() => { field: Mongo.Collection }`
 * `comments.insert(document: Document, link: Link, fields: {}) => _id: String`
-* `comments.set(document: Document, link: Link, fields: Object) => Number`
-* `comments.remove(document: Document, link: Link) => Number`
+* `comments.set(document: Document, link: Link, fields: Object) => count: Number`
+* `comments.remove(document: Document, link: Link) => count: Number`
 * `comments.links(document: Document) => [Object]`
 * `comments.link(document: Document, id: String) => Object|undefined`
 * `comments.index(document: Document, id: String) => Number|undefined`
@@ -133,9 +133,13 @@ var DataCommentsSchema = new SimpleSchema({
 Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
 ```
 
-> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.0).
+> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1).
 
 ## Versions
+
+#### 0.3.1
+* rename `Trees.Observe` on `Trees.Observer`
+* fix comments
 
 #### 0.3.0
 * replaced [ivansglazunov:dbrefs](https://github.com/ivansglazunov/meteor-dbrefs) on [ivansglazunov:links](https://github.com/ivansglazunov/meteor-links).

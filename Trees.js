@@ -29,7 +29,7 @@ Mongo.Collection.prototype.trees = function() {
 };
 
 // Create new tree.
-// (name) => Tree|thrown Meteor.Error
+// (name: String) => Tree|thrown Meteor.Error
 Trees.new = function(name) {
   var tree = new Trees.Tree(name);
   if (name in _trees)
@@ -39,7 +39,7 @@ Trees.new = function(name) {
 };
 
 // Get created tree by name.
-// (name) => Tree
+// (name: String) => Tree|undefined
 Trees.get = function(name) {
   if (name in _trees)
     return _trees[name].tree;
@@ -78,7 +78,7 @@ var hasInheritanceParent = function(_field, link) {
 };
 
 // Should always be a reference and id.
-// (collection: Mongo.Collection, modifier: Modifier) => throw new Meteor.Error
+// (collection: Mongo.Collection, document: Document, modifier: Modifier) => throw new Meteor.Error
 Trees.checkUpdate = function(collection, document, modifier) {
   var _fields = collection.trees();
   for (var m in modifier) {

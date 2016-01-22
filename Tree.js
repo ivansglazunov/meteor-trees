@@ -16,7 +16,7 @@ Tree.prototype.removeListener = function() { return _trees[this._name].events.re
 // attach(collection, field)
 
 // Return field of tree in collection.
-// (collection) => String
+// (collection: Mongo.Collection) => String
 Tree.prototype.field = function(collection) {
   if (!(collection instanceof Mongo.Collection)) throw new Meteor.Error('collection is not a Mongo.Collection!');
   if (!(collection._name in _collections)) throw new Meteor.Error('collection "'+collection._name+'" is not defined in tree "'+this._name+'".');
@@ -70,7 +70,7 @@ Tree.prototype.index = function(document, id) {
 };
 
 // Get document links.
-// (document: Document) => [Link]
+// (document: Document) => [Object]
 Tree.prototype.links = function(document) {
   var link = document.Link();
   var field = this.field(Link.collection(link));
@@ -88,7 +88,7 @@ Tree.prototype.link = function(document, id) {
 };
 
 // Insert link in this tree in document.
-// (document: Document, link: Link, fields: Object) => id: String
+// (document: Document, link: Link, fields: Object) => _id: String
 Tree.prototype.insert = function(document, _link, fields) {
   var link = document.Link();
   var collection = Link.collection(link);
@@ -105,7 +105,7 @@ Tree.prototype.insert = function(document, _link, fields) {
 };
 
 // Set all fields in link in this tree in document.
-// (document: Document, id: String, fields: Object) => Number
+// (document: Document, id: String, fields: Object) => count: Number
 Tree.prototype.set = function(document, id, fields) {
   var link = document.Link();
   var collection = Link.collection(link);
@@ -119,7 +119,7 @@ Tree.prototype.set = function(document, id, fields) {
 };
 
 // Remove link in this tree.
-// (document: Document, id: String) => Number
+// (document: Document, id: String) => count: Number
 Tree.prototype.remove = function(document, id) {
   if (typeof(id) != 'string') throw new Meteor.Error('id must be a string');
   var link = document.Link();

@@ -1,8 +1,8 @@
 // new (tree: Trees.Tree, collection: Mongo.Collection, cursor: Mongo.Cursor, field: String)
-var Observe = Trees.Observe = function(tree, collecion, cursor, field) {
+var Observer = Trees.Observer = function(tree, collecion, cursor, field) {
   var observer = this;
 
-  if (!(this instanceof Observe)) throw new Meteor.Error('Only constructing allowed!');
+  if (!(this instanceof Observer)) throw new Meteor.Error('Only constructing allowed!');
 
   this._events = new EventEmitter();
 
@@ -46,22 +46,22 @@ var Observe = Trees.Observe = function(tree, collecion, cursor, field) {
 };
 
 // EventEmitter wrappers
-Observe.prototype.on = function() { return this._events.on.apply(this._events, arguments); };
-Observe.prototype.once = function() { return this._events.once.apply(this._events, arguments); };
-Observe.prototype.off = function() { return this._events.off.apply(this._events, arguments); };
-Observe.prototype.addListener = function() { return this._events.addListener.apply(this._events, arguments); };
-Observe.prototype.removeListener = function() { return this._events.removeListener.apply(this._events, arguments); };
+Observer.prototype.on = function() { return this._events.on.apply(this._events, arguments); };
+Observer.prototype.once = function() { return this._events.once.apply(this._events, arguments); };
+Observer.prototype.off = function() { return this._events.off.apply(this._events, arguments); };
+Observer.prototype.addListener = function() { return this._events.addListener.apply(this._events, arguments); };
+Observer.prototype.removeListener = function() { return this._events.removeListener.apply(this._events, arguments); };
 
 // Events
-// insert(link, document)
-// update(newLink, newDoc, oldLink, oldDoc)
-// remove(link, document)
+// insert(link: Object, document: Document)
+// update(newLink: Object, newDoc: Document, oldLink: Object, oldDoc: Document)
+// remove(link: Object, document: Document)
 
-// (collection: Mongo.Collection, cursor: Mongo.Cursor) => Trees.Observe
+// (collection: Mongo.Collection, cursor: Mongo.Cursor) => Trees.Observer
 Trees.Tree.prototype.observe = function(collection, cursor) {
   if (!(this instanceof Tree)) throw new Meteor.Error('Only calling allowed!');
   // if (!(cursor instanceof Mongo.Cursor)) throw new Meteor.Error('Cursor is not a cursor.');
   // if (!(collection instanceof Mongo.Collection)) throw new Meteor.Error('Collection is not a collection.');
   var field = this.field(collection);
-  return new Trees.Observe(this, collection, cursor, field);
+  return new Trees.Observer(this, collection, cursor, field);
 };
