@@ -4,7 +4,7 @@
 meteor add ivansglazunov:trees ivansglazunov:links
 ```
 
-### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1)
+### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.5)
 
 The universal system of trees.
 
@@ -39,7 +39,12 @@ As a reference to the link in document uses `Trees.Link`.
 ### Create new tree
 
 You can use the following method:
-* `Trees.new(name: String) => Trees.Tree`
+* `Trees.new(name: String, handler?: Handler) => Trees.Tree`
+
+Where `Handler` is object:
+* insert?: .call({ action: "insert"|"update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document),
+* update?: .call({ action: "update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier),
+* remove?: .call({ action: "update"|"remove" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier)
 
 ```js
 var comments = Trees.new('comments');
@@ -64,7 +69,7 @@ In this field restrictions for maintain the integrity:
 * It is forbidden to change the field `_id` and field `_link` in link.
 
 For this to work, be sure to:
-* Add to `collection.allow` or `collection.deny` methods `Trees.checkInsert(collection, document)` in `insert` and `Trees.checkUpdate(collection, modifier)` in `update`.
+* Add to `collection.allow` or `collection.deny` methods `Trees.checkInsert(userId: any, collection: Mongo.Collection, document: Document)` in `insert`, `Trees.checkUpdate(userId: any, collection: Mongo.Collection, document: Document, fields: [String], modifier: Modifier)` in `update` and `Trees.checkRemove(userId: any, collection: Mongo.Collection, document: Document)` in `remove`.
 * remove the package `insecure`.
 
 Now you can use the following methods:
@@ -118,6 +123,23 @@ observer.on('update', function(newLink, newDocument, oldLink, oldDocument) {});
 observer.on('remove', function(link, document) {});
 ```
 
+### You can apply limitations on the tree!
+
+Simply pass handlers when you create a tree.
+
+```js
+var comments = Trees.new('comments', {
+  // .call({ action: "insert"|"update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document),
+  insert: function(userId, collection, link, document) { if (userId == 'devil') return false; return true; },
+  // .call({ action: "update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier),
+  update: function(userId, collection, link, document, fields, modifier) { if (userId == 'devil') return false; return true; },
+  // .call({ action: "update"|"remove" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier)
+  remove: function(userId, collection, link, document, fields, modifier) { if (userId == 'devil') return false; return true; }
+});
+```
+
+If the user id is devil, his actions on the tree will be prohibited.
+
 ### Use the SimpleSchema!
 
 The package is compatible with the [SimpleSchema](https://atmospherejs.com/aldeed/simple-schema).
@@ -134,9 +156,12 @@ var DataCommentsSchema = new SimpleSchema({
 Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
 ```
 
-> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1).
+> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.5).
 
 ## Versions
+
+#### 0.3.5
+* add access limitation with handlers
 
 #### 0.3.1
 * rename `Trees.Observe` on `Trees.Observer`

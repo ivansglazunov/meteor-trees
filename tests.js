@@ -13,7 +13,11 @@ Checks.allow({
   }
 });
 
-var checks = Trees.new('checks');
+var checks = Trees.new('checks', {
+  insert: function(userId) { if (userId == 'devil') return false; return true; },
+  update: function(userId) { if (userId == 'devil') return false; return true; },
+  remove: function(userId) { if (userId == 'devil') return false; return true; }
+});
 var inheritable = Trees.new('inheritable');
 
 var events = {
@@ -35,18 +39,23 @@ observer.on('remove', function() { events.remove = true; });
 
 Tinytest.add('ivansglazunov:trees checks insert', function (assert) {
   assert.throws(function() {
-    Trees.checkInsert(Checks, {
+    Trees.checkInsert('devil', Checks, {
+      _id: Random.id(), _checks: [{ _id: Random.id(), _link: "test|checks" }]
+    });
+  });
+  assert.throws(function() {
+    Trees.checkInsert(Random.id(), Checks, {
       _id: Random.id(), _checks: [{ _id: Random.id() }]
     });
   });
-  Trees.checkInsert(Checks, {
+  Trees.checkInsert(Random.id(), Checks, {
     _id: Random.id(), _checks: [{ _id: Random.id(), _link: "test|checks" }]
   });
 });
 
 Tinytest.add('ivansglazunov:trees checks update links', function (assert) {
   assert.throws(function() {
-    Trees.checkUpdate(Checks, Checks._transform({}), {
+    Trees.checkUpdate(Random.id(), Checks, Checks._transform({}), [], {
       $set: { '_checks': [{ _id: Random.id(), _link: "test|checks" }] }
     });
   });
@@ -54,7 +63,7 @@ Tinytest.add('ivansglazunov:trees checks update links', function (assert) {
 
 Tinytest.add('ivansglazunov:trees checks update link invalid', function (assert) {
   assert.throws(function() {
-    Trees.checkUpdate(Checks, Checks._transform({}), {
+    Trees.checkUpdate(Random.id(), Checks, Checks._transform({}), [], {
       $set: { '_checks.0': { _id: Random.id(), _link: "test|checks" } }
     });
   });
@@ -62,14 +71,19 @@ Tinytest.add('ivansglazunov:trees checks update link invalid', function (assert)
 
 Tinytest.add('ivansglazunov:trees checks update link valid', function (assert) {
   var document = { _checks: [{ _id: Random.id(), _link: "test|checks" }] };
-  Trees.checkUpdate(Checks, Checks._transform(document), {
+  Trees.checkUpdate(Random.id(), Checks, Checks._transform(document), [], {
     $set: { '_checks.0': document._checks[0] }
+  });
+  assert.throws(function() {
+    Trees.checkUpdate('devil', Checks, Checks._transform(document), [], {
+      $set: { '_checks.0': document._checks[0] }
+    });
   });
 });
 
 Tinytest.add('ivansglazunov:trees checks update link._id', function (assert) {
   assert.throws(function() {
-    Trees.checkUpdate(Checks, Checks._transform({}), {
+    Trees.checkUpdate(Random.id(), Checks, Checks._transform({}), [], {
       $set: { '_checks.0._id': Random.id() }
     });
   });
@@ -77,32 +91,42 @@ Tinytest.add('ivansglazunov:trees checks update link._id', function (assert) {
 
 Tinytest.add('ivansglazunov:trees checks update link._link', function (assert) {
   assert.throws(function() {
-    Trees.checkUpdate(Checks, Checks._transform({}), {
+    Trees.checkUpdate(Random.id(), Checks, Checks._transform({}), [], {
       $set: { '_checks.0._link': Random.id() }
     });
   });
 });
 
 Tinytest.add('ivansglazunov:trees checks update link.x', function (assert) {
-  Trees.checkUpdate(Checks, Checks._transform({}), {
+  Trees.checkUpdate(Random.id(), Checks, Checks._transform({ _checks: [ { x: 123 } ] }), [], {
     $set: { '_checks.0.x': Random.id() }
+  });
+  assert.throws(function() {
+    Trees.checkUpdate('devil', Checks, Checks._transform({}), [], {
+      $set: { '_checks.0.x': Random.id() }
+    });
   });
 });
 
 Tinytest.add('ivansglazunov:trees checks update push', function (assert) {
-  Trees.checkUpdate(Checks, Checks._transform({}), {
+  Trees.checkUpdate(Random.id(), Checks, Checks._transform({}), [], {
     $push: { '_checks': { _id: Random.id(), _link: "test|checks" } }
+  });
+  assert.throws(function() {
+    Trees.checkUpdate('devil', Checks, Checks._transform({}), [], {
+      $push: { '_checks': { _id: Random.id(), _link: "test|checks" } }
+    });
   });
 });
 
 Tinytest.add('ivansglazunov:trees checks update pull', function (assert) {
   var id = Random.id();
   assert.throws(function() {
-    Trees.checkUpdate(Checks, Checks._transform({}), {
+    Trees.checkUpdate(Random.id(), Checks, Checks._transform({}), [], {
       $pull: { '_checks': { _id: id } }
     });
   });
-  Trees.checkUpdate(Checks, Checks._transform({ '_checks': [{ _id: id }] }), {
+  Trees.checkUpdate(Random.id(), Checks, Checks._transform({ '_checks': [{ _id: id }] }), [], {
     $pull: { '_checks': { _id: id } }
   });
 });
