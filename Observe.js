@@ -18,7 +18,7 @@ var Observe = Trees.Observe = function(tree, collecion, cursor, field) {
       var oldLinks = {};
       if (field in oldDoc && oldDoc[field].length) {
         for (var i in oldDoc[field]) {
-          oldLinks[oldDoc[field][i]._id] = oldDoc[field];
+          oldLinks[oldDoc[field][i]._id] = oldDoc[field][i];
         }
       }
       if (field in newDoc && newDoc[field].length) {
@@ -58,7 +58,7 @@ Observe.prototype.removeListener = function() { return this._events.removeListen
 // remove(link, document)
 
 // (collection: Mongo.Collection, cursor: Mongo.Cursor) => Trees.Observe
-Tree.prototype.observe = function(collection, cursor) {
+Trees.Tree.prototype.observe = function(collection, cursor) {
   if (!(this instanceof Tree)) throw new Meteor.Error('Only calling allowed!');
   // if (!(cursor instanceof Mongo.Cursor)) throw new Meteor.Error('Cursor is not a cursor.');
   // if (!(collection instanceof Mongo.Collection)) throw new Meteor.Error('Collection is not a collection.');

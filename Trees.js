@@ -6,43 +6,43 @@ Trees.Schema = new SimpleSchema({
     type: String,
     autoValue: function() { if (!this.isSet) return Random.id(); }
   },
-  _ref: {
-    type: DBRef.Schema
+  _link: {
+    type: String,
+    custom: function () {
+      Link.parse(this.value);
+    }
   }
 });
 
-// { name: Tree }
+// { name: { trees: { name: field }, fields: { field: Tree } } }
+_collections = {};
+
+// { name: { collections: { name: Collection }, tree: Tree, events: EventEmitter } }
 _trees = {};
 
-// { collectionName: { field: Tree } }
-_fieldsInCollection = {};
-
-// { treeName: { collectionName: Mongo.Collection } }
-_collectionsInTree = {};
-
-// { collectionName: { treeName: field } }
-_treesInCollection = {};
-
-// Return fields with trees used in collections.
-// (collection: Mongo.Collection) => { field: Tree }
-Trees.fields = function(collection) {
-  if (!(collection instanceof Mongo.Collection)) throw new Meteor.Error('Collection is not a Mongo.Collection!');
-  return lodash.clone(_fieldsInCollection[collection._name]);
+// Return fields with trees used in collection.
+// () => { field: Tree }|undefined
+Mongo.Collection.prototype.trees = function() {
+  if (_collections[this._name])
+    return lodash.clone(_collections[this._name].fields);
+  return undefined;
 };
 
 // Create new tree.
-// (name) => Tree
+// (name) => Tree|thrown Meteor.Error
 Trees.new = function(name) {
-  var tree = new Trees.Tree(name); // Construct tree.
-  if (name in _trees) throw new Meteor.Error('Tree with name "'+name+'" already attached.'); // CHeck name duplication.
-  _trees[name] = tree; // Define tree.
+  var tree = new Trees.Tree(name);
+  if (name in _trees)
+    throw new Meteor.Error('tree with name "'+name+'" already attached.');
+  _trees[name] = { collections: {}, tree: tree, events: new EventEmitter() };
   return tree;
 };
 
 // Get created tree by name.
 // (name) => Tree
 Trees.get = function(name) {
-  if (name in _trees) return _trees[name];
+  if (name in _trees)
+    return _trees[name].tree;
   else return undefined;
 };
 
@@ -51,55 +51,108 @@ Trees.get = function(name) {
 // Should always be a reference and id.
 // (collection: Mongo.Collection, document: Document) => throw new Meteor.Error
 Trees.checkInsert = function(collection, document) {
-  var _fields = this.fields(collection);
+  var _fields = collection.trees();
   for (var _field in _fields) {
     if (_field in document) {
       for (var l in document[_field]) {
-        if (!('_id' in document[_field][l]) || typeof(document[_field][l]['_id']) != 'string') throw new Meteor.Error('In "'+_field+'" field at index "'+l+'", "_id" field is not found.');
-        if (!('_ref' in document[_field][l]) || !DBRef.isDBRef(document[_field][l]['_ref'])) throw new Meteor.Error('In "'+_field+'" field at index "'+l+'", "_ref" field is not found.');
+        if (typeof(document[_field][l]['_id']) != 'string')
+          throw new Meteor.Error('_id must be a string', 'document["'+_field+'"]["'+l+'"]');
+        if (!Link.parse(document[_field][l]['_link']))
+          throw new Meteor.Error('_link must be a string', 'document["'+_field+'"]["'+l+'"]');
+        if ('_inherit' in document[_field][l])
+          throw new Meteor.Error('_inherit in insert is forbidden', 'document["'+_field+'"]["'+l+'"]');
       }
     }
   }
 };
 
+var hasInheritanceParent = function(_field, link) {
+  try {
+    var inherit = Parse.Link(link._inherit);
+  } catch(error) {
+    throw new Meteor.Error('illigal "_inherit" field!');
+  }
+  if (inherit.link && inherit.link._link == link._link)
+    return true;
+  throw new Meteor.Error('illigal "_inherit" field!');
+};
+
 // Should always be a reference and id.
 // (collection: Mongo.Collection, modifier: Modifier) => throw new Meteor.Error
 Trees.checkUpdate = function(collection, document, modifier) {
-  var _fields = this.fields(collection);
+  var _fields = collection.trees();
   for (var m in modifier) {
     if (m.charAt(0) == '$') {
-      for (var key in modifier[m]) {
-        var path = key.split('.');
+      for (var field in modifier[m]) {
+        var path = field.split('.');
         if (path[0] in _fields) {
           if (path.length == 1) {
             if (m == '$push') {
-              if ('$each' in modifier[m][key]) {
-                for (var e of modifier[m][key]['$each']) {
-                  if (!('_id' in modifier[m][key]['$each'][e])) throw new Meteor.Error('Modifier $push to "'+path[0]+'" field, is invalid.', 'Field "_id" is not found.');
-                  if (!('_ref' in modifier[m][key]['$each'][e])) throw new Meteor.Error('Modifier $push to "'+path[0]+'" field, is invalid.', 'Field "_ref" field is not found.');
+              if ('$each' in modifier[m][field]) {
+                for (var e of modifier[m][field]['$each']) {
+                  if (typeof(modifier[m][field]['$each'][e]['_id']) != 'string')
+                    throw new Meteor.Error('_id must be a string', 'document["'+_field+'"].$');
+                  if (typeof(modifier[m][field]['$each'][e]['_link']) != 'string')
+                    throw new Meteor.Error('_link must be a string', 'document["'+path[0]+'"].$');
+                  if ('_inherit' in modifier[m][field]['$each'][e])
+                    hasInheritanceParent(path[0], modifier[m][field]['$each'][e]);
                 }
               } else {
-                if (!('_id' in modifier[m][key])) throw new Meteor.Error('Modifier $push to "'+path[0]+'" field, is invalid.', 'Field "_id" is not found.');
-                if (!('_ref' in modifier[m][key])) throw new Meteor.Error('Modifier $push to "'+path[0]+'" field, is invalid.', 'Field "_ref" field is not found.');
+                if (typeof(modifier[m][field]['_id']) != 'string')
+                  throw new Meteor.Error('_id must be a string', 'document["'+_field+'"].$');
+                if (typeof(modifier[m][field]['_link']) != 'string')
+                  throw new Meteor.Error('_link must be a string', 'document["'+_field+'"].$');
+                if ('_inherit' in modifier[m][field])
+                  hasInheritanceParent(path[0], modifier[m][field]);
               }
-            } else if (m != '$pull') throw new Meteor.Error('Illegal modifier with tree field!');
+            } else if (m == '$pull') {
+              if (lodash.size(modifier[m][field]) > 1 || typeof(modifier[m][field]['_id']) != 'string')
+                throw new Meteor.Error('remove link only by _id');
+              else {
+                var link = collection.trees()[path[0]].link(document, modifier[m][field]['_id']);
+                if (!link)
+                  throw new Meteor.Error('link "'+modifier[m][field]['_id']+'" in document "'+document._id+'" not found');
+                if ('_inherit' in link) {
+                  var inherit = Trees.Link(link._inherit);
+                  if (inherit.link && inherit.link._link == link._link)
+                    throw new Meteor.Error('invalid removal operation with inherited link');
+                }
+              }
+            } else throw new Meteor.Error('illegal modifier with tree field!');
           } else if (path.length == 2) {
             if (m == '$set') {
-              if (!(path[0] in document) || !(path[1] in document[path[0]])) throw new Meteor.Error('In "'+_field+'" field at path "'+key+'", link with index "'+path[1]+'" is not found.');
-              if (!('_id' in modifier[m][key])) throw new Meteor.Error('In "'+_field+'" field at path "'+key+'", "_id" field is not found.');
-              if (document[path[0]][path[1]]._id != modifier[m][key]._id) throw new Meteor.Error('In "'+_field+'" field at path "'+key+'", "_id" field is not equal with original field.');
-              if (!('_ref' in modifier[m][key])) throw new Meteor.Error('In "'+_field+'" field at path "'+key+'", "_ref field" field is not found.');
-              if (document[path[0]][path[1]]._ref != modifier[m][key]._ref) throw new Meteor.Error('In "'+_field+'" field at path "'+key+'", "_id" field is not equal with original field.');
+              if (!(path[0] in document) || !(path[1] in document[path[0]]))
+                throw new Meteor.Error('link not found', 'document["'+path[0]+'"]');
+
+              if (typeof(modifier[m][field]['_id']) != 'string')
+                throw new Meteor.Error('_id must be a string', 'document["'+path[0]+'"]["'+path[1]+'"]');
+              if (document[path[0]][path[1]]._id != modifier[m][field]._id)
+                throw new Meteor.Error('_id can not be changed', 'document["'+path[0]+'"]["'+path[1]+'"]');
+
+              if (typeof(modifier[m][field]['_link']) != 'string')
+                throw new Meteor.Error('_link must be a string', 'document["'+path[0]+'"]["'+path[1]+'"]');
+              if (document[path[0]][path[1]]._link != modifier[m][field]._link)
+                throw new Meteor.Error('_link can not be changed', 'document["'+path[0]+'"]["'+path[1]+'"]');
+
+              if (document[path[0]][path[1]]._inherit) {
+                if (!('_inherit' in modifier[m][field]))
+                  throw new Meteor.Error('_inherit not found', 'document["'+path[0]+'"]["'+path[1]+'"]');
+                if (document[path[0]][path[1]]._inherit != modifier[m][field]._inherit)
+                  throw new Meteor.Error('_inherit can not be changed', 'document["'+path[0]+'"]["'+path[1]+'"]');
+              } else if ('_inherit' in modifier[m][field])
+                throw new Meteor.Error('_inherit can not be changed');
             } else if (m == '$unset') {
-              if ('_id' in modifier[m][key] || '_ref' in modifier[m][key]) throw new Meteor.Error('It is forbidden to remove required keys!');
-            } else throw new Meteor.Error('Forbidden modifier to tree links.');
-          } else if (path.length == 3 && (path[2] == '_id' || path[2] == '_ref')) {
-            throw new Meteor.Error('It is forbidden to remove required keys!');
+              if ('_id' in modifier[m][field] || '_link' in modifier[m][field] || '_inherit' in modifier[m][field])
+                throw new Meteor.Error('required keys can not be changed');
+            } else
+              throw new Meteor.Error('"'+m+'" is forbidden modifier to tree links.');
+          } else if ((path.length == 3 || path.length == 4) && (path[2] == '_id' || path[2] == '_link' || path[2] == '_inherit')) {
+            throw new Meteor.Error('required keys can not be changed');
           }
         }
       }
     } else {
-      throw new Meteor.Error('It is forbidden the full document update.');
+      throw new Meteor.Error('it is forbidden the full document update.');
     }
   }
 };

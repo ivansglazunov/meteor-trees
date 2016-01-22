@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ivansglazunov:trees',
-  version: '0.2.2',
+  version: '0.3.0',
   summary: 'The universal system of trees.',
   git: 'https://github.com/ivansglazunov/meteor-trees',
   documentation: 'README.md'
@@ -13,12 +13,14 @@ Package.onUse(function(api) {
   api.use('random');
   api.use('dburles:mongo-collection-instances@0.3.4');
   api.use('stevezhu:lodash@3.10.1');
-  api.use('ivansglazunov:dbrefs@0.1.4');
+  api.use('ivansglazunov:links@0.1.2');
   api.use('aldeed:simple-schema@1.5.1');
   api.use('raix:eventemitter@0.1.3');
   api.addFiles('Trees.js');
   api.addFiles('Tree.js');
   api.addFiles('Observe.js');
+  api.addFiles('Cursor.js');
+  api.addFiles('Link.js');
   api.export('Trees');
 });
 
@@ -30,6 +32,6 @@ Package.onTest(function(api) {
   api.use('dburles:mongo-collection-instances@0.3.4');
   api.use('stevezhu:lodash@3.10.1');
   api.use('ivansglazunov:trees');
-  api.use('ivansglazunov:dbrefs@0.1.4');
+  api.use('ivansglazunov:links@0.1.2');
   api.addFiles('tests.js');
 });
