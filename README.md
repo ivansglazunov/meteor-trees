@@ -1,7 +1,7 @@
 # Trees
 
 ```
-meteor add ivansglazunov:trees ivansglazunov:dbrefs
+meteor add ivansglazunov:trees ivansglazunov:links
 ```
 
 ### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1)
