@@ -39,6 +39,7 @@ Mongo.Collection.prototype.attachTree = function(tree, field) {
   var collection = this;
   
   collection.attachLinks();
+
   if (!(collection._name in _collections))
     _collections[collection._name] = { trees: {}, fields: {} };
 
@@ -130,7 +131,7 @@ Tree.prototype.remove = function(document, id) {
 };
 
 // Find children of document
-// (document: Document, handler: .call(document, query, collection, field))
+// (document: Document, handler: .call(document, query, collection, field)) => Trees.Cursor
 Tree.prototype.children = function(document, handler) {
   var link = document.Link();
   var result = new Trees.Cursor();
@@ -145,12 +146,12 @@ Tree.prototype.children = function(document, handler) {
 };
 
 // Find in tree
-// (handler: .call(query, collection, field))
+// (handler: (query, collection, field)) => Trees.Cursor
 Tree.prototype.find = function(handler) {
   var result = new Trees.Cursor();
   lodash.each(this.collections(), function(collection, field) {
     var query = {};
-    if (lodash.isFunction(handler)) handler.call(query, collection, field);
+    if (lodash.isFunction(handler)) handler(query, collection, field);
     var cursor = collection.find(query);
     result._cursors.push({ cursor: cursor, collection: collection, field: field });
   });
