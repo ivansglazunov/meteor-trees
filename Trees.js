@@ -14,14 +14,14 @@ Trees.Schema = new SimpleSchema({
   }
 });
 
-// { name: { trees: { name: field }, fields: { field: Tree } } }
+// { name: { trees: { name: field }, fields: { field: Trees.Tree } } }
 _collections = {};
 
-// { name: { collections: { name: Collection }, tree: Tree, events: EventEmitter } }
+// { name: { collections: { name: Collection }, tree: Trees.Tree, events: EventEmitter } }
 _trees = {};
 
 // Return fields with trees used in collection.
-// () => { field: Tree }|undefined
+// () => { field: Trees.Tree }|undefined
 Mongo.Collection.prototype.trees = function() {
   if (_collections[this._name])
     return lodash.clone(_collections[this._name].fields);
@@ -29,7 +29,7 @@ Mongo.Collection.prototype.trees = function() {
 };
 
 // Create new tree.
-// (name: String) => Tree|thrown Meteor.Error
+// (name: String) => Trees.Tree|thrown Meteor.Error
 Trees.new = function(name) {
   var tree = new Trees.Tree(name);
   if (name in _trees)
@@ -39,7 +39,7 @@ Trees.new = function(name) {
 };
 
 // Get created tree by name.
-// (name: String) => Tree|undefined
+// (name: String) => Trees.Tree|undefined
 Trees.get = function(name) {
   if (name in _trees)
     return _trees[name].tree;

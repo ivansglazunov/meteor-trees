@@ -159,7 +159,7 @@ Tree.prototype.find = function(handler) {
 };
 
 // Interface of inheritance.
-// (inheritable: Tree)
+// (inheritable: Trees.Tree)
 Tree.prototype.inherit = function(inheritable) {
   var main = this; // Tree
 

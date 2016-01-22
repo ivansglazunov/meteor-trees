@@ -14,6 +14,7 @@ The universal system of trees.
 * Each link in tree has a unique id
 * Integrity is maintained at [.allow](http://docs.meteor.com/#/full/allow) and [.deny](http://docs.meteor.com/#/full/deny) collection methods
 * Events in the tree attached to the cursor
+* Multi collection [Cursor](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.1.Trees.Cursor) on a tree.
 
 ### Schema of link in tree:
 ```js
@@ -38,14 +39,14 @@ As a reference to the link in document uses `Trees.Link`.
 ### Create new tree
 
 You can use the following method:
-* `Trees.new(name: String) => Tree`
+* `Trees.new(name: String) => Trees.Tree`
 
 ```js
 var comments = Trees.new('comments');
 ```
 
 Now you can use the following method:
-* `Trees.get(name) => Tree`
+* `Trees.get(name) => Trees.Tree`
 
 > Congratulations! Now you have a tree. However, it is not yet connected to the collections.
 
