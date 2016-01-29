@@ -1,187 +1,75 @@
 # Trees
 
 ```
-meteor add ivansglazunov:trees ivansglazunov:links
+meteor add ivansglazunov:trees
 ```
 
-### [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.6)
+Oriented graph with maintaining of integrity and inheritance.
 
-The universal system of trees.
-
-* Trees as a universal way to represent a link between documents
-* Bind documents from different collections
-* Store in each link, the custom fields
-* Each link in tree has a unique id
-* Integrity is maintained at [.allow](http://docs.meteor.com/#/full/allow) and [.deny](http://docs.meteor.com/#/full/deny) collection methods
-* Events in the tree attached to the cursor
-* Multi collection [Cursor](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.6.Trees.Cursor) on a tree.
-
-### Schema of link in tree:
-```js
-{
-  // Required fields
-  _id: String,
-  _link: Link,
-  // Any custom fields
-  x: 100,
-  y: 200
-}
-```
-
-As a reference to the document uses the package [ivansglazunov:links](https://github.com/ivansglazunov/meteor-links).
-As a reference to the link in document uses `Trees.Link`.
-
-## Sample
-
-> Let's say we want to create a tree of comments.
-> All our data are stored in a collection of "data".
-
-### Create new tree
-
-You can use the following method:
-* `Trees.new(name: String, handler?: Handler) => Trees.Tree`
-
-Where `Handler` is object:
-* insert?: .call({ action: "insert"|"update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document),
-* update?: .call({ action: "update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier),
-* remove?: .call({ action: "update"|"remove" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier)
+## Example
 
 ```js
-var comments = Trees.new('comments');
+A = new Mongo.Collection('A');
+B = new Mongo.Collection('B');
+C = new Mongo.Collection('C');
+
+A.attachSchema(Trees.Schema);
+B.attachSchema(Trees.Schema);
+
+A.attachRefs();
+B.attachRefs();
+C.attachRefs();
+
+A.attachTree();
+B.attachTree();
+
+if (Meteor.isServer) A.inheritTree(B);
+
+C.insert({ _id: '1' });
+C.insert({ _id: '2' });
+C.insert({ _id: '3' });
+C.insert({ _id: '4' });
+C.insert({ _id: '5' });
+
+A.insert({_source: C.findOne('2').Ref(), _target: C.findOne('1').Ref() });
+A.insert({_source: C.findOne('3').Ref(), _target: C.findOne('2').Ref() });
+A.insert({_source: C.findOne('4').Ref(), _target: C.findOne('2').Ref() });
+A.insert({_source: C.findOne('5').Ref(), _target: C.findOne('4').Ref() });
+
+B.insert({_source: C.findOne('1').Ref(), _target: C.findOne('1').Ref() });
+
+console.log(A.find().fetch());
+// {"_id":"6","_source":{"collection":"C","id":"2"},"_target":{"collection":"C","id":"1"}}
+// {"_id":"7","_source":{"collection":"C","id":"3"},"_target":{"collection":"C","id":"2"}}
+// {"_id":"8","_source":{"collection":"C","id":"4"},"_target":{"collection":"C","id":"2"}}
+// {"_id":"9","_source":{"collection":"C","id":"5"},"_target":{"collection":"C","id":"4"}}
+
+console.log(B.find().fetch());
+// {"_id":"10","_source":{"collection":"C","id":"1"},"_target":{"collection":"C","id":"1"}}
+// {"_id":"11","_source":{"collection":"C","id":"2"},"_target":{"collection":"C","id":"1"},"_inherit":{"main":"10","inherit":"10","collection":"A","id":"6"}}
+// {"_id":"12","_source":{"collection":"C","id":"3"},"_target":{"collection":"C","id":"1"},"_inherit":{"main":"10","inherit":"11","collection":"A","id":"7"}}
+// {"_id":"12","_source":{"collection":"C","id":"4"},"_target":{"collection":"C","id":"1"},"_inherit":{"main":"10","inherit":"11","collection":"A","id":"8"}}
+// {"_id":"13","_source":{"collection":"C","id":"5"},"_target":{"collection":"C","id":"1"},"_inherit":{"main":"10","inherit":"12","collection":"A","id":"9"}}
+
+console.log(C.find().fetch());
+// {"_id":"1"}
+// {"_id":"2"}
+// {"_id":"3"}
+// {"_id":"4"}
+// {"_id":"5"}
+
+A.remove("8");
+
+console.log(A.find().fetch());
+{"_id":"6","_source":{"collection":"C","id":"2"},"_target":{"collection":"C","id":"1"}}
+{"_id":"7","_source":{"collection":"C","id":"3"},"_target":{"collection":"C","id":"2"}}
+{"_id":"9","_source":{"collection":"C","id":"5"},"_target":{"collection":"C","id":"4"}}
+
+console.log(B.find().fetch());
+{"_id":"10","_source":{"collection":"C","id":"1"},"_target":{"collection":"C","id":"1"}}
+{"_id":"11","_source":{"collection":"C","id":"2"},"_target":{"collection":"C","id":"1"},"_inherit":{"main":"10","inherit":"10","collection":"A","id":"6"}}
+{"_id":"12","_source":{"collection":"C","id":"3"},"_target":{"collection":"C","id":"1"},"_inherit":{"main":"10","inherit":"11","collection":"A","id":"7"}}
+
+A.update("7", { $set: { _source: C.findOne('2').Ref() } });
+// update failed: Error: [Access denied.]
 ```
-
-Now you can use the following method:
-* `Trees.get(name) => Trees.Tree`
-
-> Congratulations! Now you have a tree. However, it is not yet connected to the collections.
-
-### Connect to collections
-
-In documents in the collections of the specified field is reserved.
-
-```js
-var Data = new Mongo.Collection('data');
-Data.attachTree(comments, '_comments');
-```
-
-In this field restrictions for maintain the integrity:
-* Always have to be `_id` field and `_link` field in link.
-* It is forbidden to change the field `_id` and field `_link` in link.
-
-For this to work, be sure to:
-* Add to `collection.allow` or `collection.deny` methods `Trees.checkInsert(userId: any, collection: Mongo.Collection, document: Document)` in `insert`, `Trees.checkUpdate(userId: any, collection: Mongo.Collection, document: Document, fields: [String], modifier: Modifier)` in `update` and `Trees.checkRemove(userId: any, collection: Mongo.Collection, document: Document)` in `remove`.
-* remove the package `insecure`.
-
-Now you can use the following methods:
-* `Data.trees() => { field: Tree }|undefined`
-* `comments.field(collection) => String`
-* `comments.collections() => { field: Mongo.Collection }`
-* `comments.insert(document: Document, link: Link, fields: {}) => _id: String`
-* `comments.set(document: Document, link: Link, fields: Object) => count: Number`
-* `comments.remove(document: Document, link: Link) => count: Number`
-* `comments.links(document: Document) => [Object]`
-* `comments.link(document: Document, id: String) => Object|undefined`
-* `comments.index(document: Document, id: String) => Number|undefined`
-* `comments.children(document: Document, handler: .call(document, query, collection, field))) => Trees.Cursor`
-* `comments.find(handler: (query, collection, field)) => Trees.Cursor`
-* `comments.Link(document: Document, link: Object) => String`
-
-> Congratulations! You are now connected to your collection to the tree!
-
-### Let's make three comments
-
-```js
-var a = Data.insert({ content: 'a' });
-
-// Link management interface.
-var b = Data.insert({ content: 'b' });
-comments.insert(Data.findOne(b), { _link: Data.findOne(a).Link() });
-
-// Manage links manually.
-var c = Data.insert({ content: 'c', _comments: [{ _id: Random.id(), _link: Data.findOne(b).Link()}] });
-```
-
-> Congratulations! Now we have several documents in the tree.
-
-### It is also possible to use the events in the tree
-
-```js
-// The new collection was used in the tree.
-// (collection: Mongo.Collection, field: String)
-comments.on('attach', function(collection, field) {});
-
-var cursor = Data.find();
-var observer = comments.observe(Data, cursor);
-
-// Insert new link in document.
-// (link: Object, document: Object)
-observer.on('insert', function(link, document) {});
-// Update document with link. Communication can be not changed, but the document is changed.
-// (newLink: Object, newDocument: Object, oldLink: Object, oldDocument: Object)
-observer.on('update', function(newLink, newDocument, oldLink, oldDocument) {});
-// Remove link from document.
-// (link: Object, document: Object)
-observer.on('remove', function(link, document) {});
-```
-
-### You can apply limitations on the tree!
-
-Simply pass handlers when you create a tree.
-
-```js
-var comments = Trees.new('comments', {
-  // .call({ action: "insert"|"update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document),
-  insert: function(userId, collection, link, document) { if (userId == 'devil') return false; return true; },
-  // .call({ action: "update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier),
-  update: function(userId, collection, link, document, fields, modifier) { if (userId == 'devil') return false; return true; },
-  // .call({ action: "update"|"remove" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier)
-  remove: function(userId, collection, link, document, fields, modifier) { if (userId == 'devil') return false; return true; }
-});
-```
-
-If the user id is devil, his actions on the tree will be prohibited.
-
-### Use the SimpleSchema!
-
-The package is compatible with the [SimpleSchema](https://atmospherejs.com/aldeed/simple-schema).
-
-```js
-var DataCommentsSchema = new SimpleSchema({
-  _comments: {
-    type: [Trees.Schema],
-    defaultValue: [],
-    optional: true
-  }
-});
-// Use in conjunction with existing schemas!
-Data.attachSchema(new SimpleSchema([DataCommentsSchema]));
-```
-
-> Full documentation with all methods can be found at the link wiki: [Documentation](https://github.com/ivansglazunov/meteor-trees/wiki/0.3.6).
-
-## Versions
-
-#### 0.3.6
-* added __inherit field for root inheritance link
-* added protection against recursion
-
-#### 0.3.5
-* add access limitation with handlers
-
-#### 0.3.1
-* rename `Trees.Observe` on `Trees.Observer`
-* fix comments
-
-#### 0.3.0
-* replaced [ivansglazunov:dbrefs](https://github.com/ivansglazunov/meteor-dbrefs) on [ivansglazunov:links](https://github.com/ivansglazunov/meteor-links).
-* added `tree.inherit` method
-* added link to link in `Link.js`
-* added `tree.children` and `tree.find`
-
-#### 0.2.1
-* fix `Tree.prototype.links`, now always returns an array
-* removed unnecessary dependence
-* added to the normal selector of removal
-
-#### 0.2.2
-* remove trash

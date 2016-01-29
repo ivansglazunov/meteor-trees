@@ -1,212 +1,245 @@
 Trees = {};
 
-// SimpleSchema
 Trees.Schema = new SimpleSchema({
-  _id: {
-    type: String,
-    autoValue: function() { if (!this.isSet) return Random.id(); }
-  },
-  _link: {
-    type: String,
-    custom: function () {
-      Link.parse(this.value);
-    }
-  }
+	_source: {
+		type: new SimpleSchema({
+			id: {
+				type: String
+			},
+			collection: {
+				type: String
+			}
+		})
+	},
+	_target: {
+		type: new SimpleSchema({
+			id: {
+				type: String
+			},
+			collection: {
+				type: String
+			}
+		})
+	},
+	_inherit: {
+		type: new SimpleSchema({
+			main: {
+				type: String
+			},
+			inherit: {
+				type: String
+			},
+			collection: {
+				type: String
+			},
+			id: {
+				type: String
+			}
+		}),
+		optional: true
+	}
 });
 
-// { name: { trees: { name: field }, fields: { field: Trees.Tree } } }
-_collections = {};
+var attachTreeSchema = new SimpleSchema({
+	allowedSourceCollection: {
+		type: [String],
+		optional: true
+	},
+	allowedTargetCollection: {
+		type: [String],
+		optional: true
+	},
+	deniedSourceCollection: {
+		type: [String],
+		optional: true
+	},
+	denyTargetCollection: {
+		type: [String],
+		optional: true
+	}
+});
 
-/* Handler: {
-insert?: .call({ action: "insert"|"update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document),
-update?: .call({ action: "update" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier),
-remove?: .call({ action: "update"|"remove" }, userId: any, collection: Mongo.Collection, link: Object, document: Document, fields: [String], modifier: Modifier)
-} */
-var _handler = { insert: undefined, update: undefined, remove: undefined };
+var trees = {};
 
-// { name: { collections: { name: Collection }, tree: Trees.Tree, events: EventEmitter }, handler: Handler }
-_trees = {};
+Mongo.Collection.prototype.attachTree = function(options) {
+	var This = this;
 
-// Return fields with trees used in collection.
-// () => { field: Trees.Tree }|undefined
-Mongo.Collection.prototype.trees = function() {
-  if (_collections[this._name])
-    return lodash.clone(_collections[this._name].fields);
-  return undefined;
+	if (This._name in trees)
+		throw new Meteor.Error('Tree already attached to collection '+This._name+'.');
+
+	trees[This._name] = true;
+
+	var options = options?options:{};
+	attachTreeSchema.clean(options);
+	var context = attachTreeSchema.newContext();
+	context.validate(options);
+
+	This.deny({
+		insert: function (userId, document) {
+			if ('_inherit' in document) {
+
+				if (!(document._inherit.collection in trees))
+					throw new Meteor.Error('Collection '+document._inherit.collection+' is not a tree.');
+
+				var path = Mongo.Collection.get(document._inherit.collection).findOne(document._inherit.id);
+
+				if (!path)
+					throw new Meteor.Error('Path of inheritance '+document._inherit.id+' is not found.');
+
+				if (path._source._id != document._source._id)
+					throw new Meteor.Error('Invalid source in path of inheritance.');
+
+				var inherited = This.findOne({
+					'_id': document._inherit.inherit,
+					'_source.collection': path._target.collection,
+					'_source.id': path._target.id,
+					'_target.collection': document._target.collection,
+					'_target.id': document._target.id
+				});
+
+				if (!inherited)
+					throw new Meteor.Error('Invalid inheritance.');
+			}
+		},
+		update: function (userId, document, fieldNames, modifier) {
+			if (lodash.includes(fieldNames, '_source') || lodash.includes(fieldNames, '_target') || lodash.includes(fieldNames, '_inherit'))
+				throw new Meteor.Error('Access denied.');
+		},
+		remove: function(userId, document) {
+			if ('_inherit' in document) {
+				if (This.findOne(document._inherit.inherit) && Refs(document._inherit))
+					throw new Meteor.Error('You can not delete an inherited link if its base intact.');
+			}
+		}
+	});
+
+	if (options.allowedSourceCollection && options.allowedSourceCollection.length) {
+		This.deny({
+			insert: function (userId, document) {
+				if (lodash.includes(options.allowedSourceCollection, document._source.collection))
+					throw new Meteor.Error('Collection '+document._source.collection+' is not allowed.');
+			}
+		});
+	}
+
+	if (options.allowedTargetCollection && options.allowedTargetCollection.length) {
+		This.deny({
+			insert: function (userId, document) {
+				if (lodash.includes(options.allowedTargetCollection, document._target.collection))
+					throw new Meteor.Error('Collection '+document._target.collection+' is not allowed.');
+			}
+		});
+	}
+
+	if (options.deniedSourceCollection && options.deniedSourceCollection.length) {
+		This.deny({
+			insert: function (userId, document) {
+				if (lodash.includes(options.deniedSourceCollection, document._source.collection))
+					throw new Meteor.Error('Collection '+document._source.collection+' is denied.');
+			}
+		});
+	}
+
+	if (options.denyTargetCollection && options.denyTargetCollection.length) {
+		This.deny({
+			insert: function (userId, document) {
+				if (lodash.includes(options.denyTargetCollection, document._target.collection))
+					throw new Meteor.Error('Collection '+document._target.collection+' is denied.');
+			}
+		});
+	}
+
+	This.helpers({
+		source: function() {
+			return Refs(this._source);
+		},
+		target: function() {
+			return Refs(this._target);
+		}
+	});
 };
 
-// Create new tree.
-// (name: String, handler: Handler) => Trees.Tree|thrown Meteor.Error
-Trees.new = function(name, handler) {
-  var tree = new Trees.Tree(name);
-  if (name in _trees)
-    throw new Meteor.Error('tree with name "'+name+'" already attached.');
-  _trees[name] = { collections: {}, tree: tree, events: new EventEmitter(), handler: lodash.merge({}, _handler, handler) };
-  return tree;
-};
+if (Meteor.isServer) {
 
-// Get created tree by name.
-// (name: String) => Trees.Tree|undefined
-Trees.get = function(name) {
-  if (name in _trees)
-    return _trees[name].tree;
-  else return undefined;
-};
+	Mongo.Collection.prototype.inheritTree = function(Inherit) {
+		var This = this;
 
-// Validation of `.allow` and `.deny`.
+		This.find().observe({
+			added: function(document) {
+				var inherits = Inherit.find({
+					'_source.collection': document._target.collection,
+					'_source.id': document._target.id
+				});
+				inherits.forEach(function (inherit) {
+					var main = ('_inherit' in inherit)?inherit._inherit.main:inherit._id;
+					if (!Inherit.find({
+						'_source.collection': document._source.collection,
+						'_source.id': document._source.id,
+						'_target.collection': inherit._target.collection,
+						'_target.id': inherit._target.id,
+						'_inherit.main': main,
+						'_inherit.inherit': inherit._id,
+						'_inherit.collection': This._name,
+						'_inherit.id': document._id
+					}).count()) {
+						Inherit.insert({
+							_source: document._source,
+							_target: inherit._target,
+							_inherit: {
+								main: main,
+								inherit: inherit._id,
+								collection: This._name,
+								id: document._id
+							}
+						});
+					}
+				});
+			},
+			removed: function(document) {
+				console.log(Inherit.findOne({
+					'_inherit.collection': This._name,
+					'_inherit.id': document._id
+				}));
+				Inherit.remove({
+					'_inherit.collection': This._name,
+					'_inherit.id': document._id
+				});
+			}
+		});
 
-// (userId: any, collection: Mongo.Collection, document: Document) => throw new Meteor.Error
-Trees.checkInsert = function(userId, collection, document) {
-  var _fields = collection.trees();
-  for (var _field in _fields) {
-    if (_field in document) {
-      for (var l in document[_field]) {
-        if (typeof(document[_field][l]['_id']) != 'string')
-          throw new Meteor.Error('_id must be a string: document["'+_field+'"]["'+l+'"]');
-        if (!Link.parse(document[_field][l]['_link']))
-          throw new Meteor.Error('_link must be a string: document["'+_field+'"]["'+l+'"]');
-        if ('_inherit' in document[_field][l])
-          throw new Meteor.Error('_inherit in insert is forbidden: document["'+_field+'"]["'+l+'"]');
-        if ('__inherit' in document[_field][l])
-          throw new Meteor.Error('__inherit in insert is forbidden: document["'+_field+'"]["'+l+'"]');
-        if (_trees[_fields[_field]._name].handler.insert) {
-          if (!_trees[_fields[_field]._name].handler.insert.call({ action: 'insert' }, userId, collection, document[_field][l], document))
-            throw new Meteor.Error('access denied: you can not insert the link "'+document[_field][l]._id+'"');
-        }
-      }
-    }
-  }
-};
-
-// insert check parent inherited link
-var hasInheritanceParent = function(field, tree, document, link) {
-  var parent = Trees.Link(link._inherit);
-  var root = Trees.Link(link.__inherit);
-  if (parent.link._link == link._link && root.link._link == link._link)
-    return true;
-  throw new Meteor.Error('illigal "_inherit" field!');
-};
-
-// (userId: any, collection: Mongo.Collection, document: Document, fields: [String], modifier: Modifier) => throw new Meteor.Error
-Trees.checkUpdate = function(userId, collection, document, fields, modifier) {
-  var _fields = collection.trees();
-  for (var m in modifier) {
-    if (m.charAt(0) == '$') {
-      for (var field in modifier[m]) {
-        var path = field.split('.');
-        if (path[0] in _fields) {
-          var tree = collection.trees()[path[0]];
-          if (path.length == 1) {
-            if (m == '$push') {
-              if ('$each' in modifier[m][field]) {
-                for (var e of modifier[m][field]['$each']) {
-                  if (typeof(modifier[m][field]['$each'][e]['_id']) != 'string')
-                    throw new Meteor.Error('_id must be a string: document["'+_field+'"].$');
-                  if (typeof(modifier[m][field]['$each'][e]['_link']) != 'string')
-                    throw new Meteor.Error('_link must be a string: document["'+path[0]+'"].$');
-                  if ('_inherit' in modifier[m][field]['$each'][e])
-                    hasInheritanceParent(field, tree, document, modifier[m][field]['$each'][e]);
-                  if (_trees[tree._name].handler.insert) {
-                    if (!_trees[tree._name].handler.insert.call({ action: 'update' }, userId, collection, modifier[m][field]['$each'][e], document, fields, modifier))
-                      throw new Meteor.Error('access denied: you can not insert this link in the document "'+document._id+'"');
-                  }
-                }
-              } else {
-                if (typeof(modifier[m][field]['_id']) != 'string')
-                  throw new Meteor.Error('_id must be a string: document["'+_field+'"].$');
-                if (typeof(modifier[m][field]['_link']) != 'string')
-                  throw new Meteor.Error('_link must be a string: document["'+_field+'"].$');
-                if ('_inherit' in modifier[m][field])
-                  hasInheritanceParent(field, tree, document, modifier[m][field]);
-                if (_trees[tree._name].handler.insert) {
-                  if (!_trees[tree._name].handler.insert.call({ action: 'update' }, userId, collection, modifier[m][field], document, fields, modifier))
-                    throw new Meteor.Error('access denied: you can not insert this link in the document "'+document._id+'"');
-                }
-              }
-            } else if (m == '$pull') {
-              if (lodash.size(modifier[m][field]) > 1 || typeof(modifier[m][field]['_id']) != 'string')
-                throw new Meteor.Error('remove link only by _id');
-              else {
-                var link = tree.link(document, modifier[m][field]['_id']);
-                if (!link)
-                  throw new Meteor.Error('link "'+modifier[m][field]['_id']+'" in document "'+document._id+'" not found');
-                if ('_inherit' in link) {
-                  var inherit = Trees.Link(link._inherit);
-                  if (inherit.link && inherit.link._link == link._link)
-                    throw new Meteor.Error('invalid removal operation with inherited link');
-                }
-                if (_trees[tree._name].handler.remove) {
-                  if (!_trees[tree._name].handler.remove.call({ action: 'update' }, userId, collection, link, document, fields, modifier))
-                    throw new Meteor.Error('access denied: you can not remove the link "'+link._id+'" in the document "'+document._id+'"');
-                }
-              }
-            } else throw new Meteor.Error('illegal modifier with tree field!');
-          } else if (path.length > 1) {
-            if (m == '$set') {
-              if (!(path[0] in document) || !(path[1] in document[path[0]]))
-                throw new Meteor.Error('link not found: document["'+path[0]+'"]');
-
-              if (path.length == 2) {
-                if (typeof(modifier[m][field]['_id']) != 'string')
-                  throw new Meteor.Error('_id must be a string: document["'+path[0]+'"]["'+path[1]+'"]');
-                if (document[path[0]][path[1]]._id != modifier[m][field]._id)
-                  throw new Meteor.Error('_id can not be changed: document["'+path[0]+'"]["'+path[1]+'"]');
-
-                if (typeof(modifier[m][field]['_link']) != 'string')
-                  throw new Meteor.Error('_link must be a string: document["'+path[0]+'"]["'+path[1]+'"]');
-                if (document[path[0]][path[1]]._link != modifier[m][field]._link)
-                  throw new Meteor.Error('_link can not be changed: document["'+path[0]+'"]["'+path[1]+'"]');
-
-                if (document[path[0]][path[1]]._inherit) {
-                  if (!('_inherit' in modifier[m][field]))
-                    throw new Meteor.Error('_inherit not found: document["'+path[0]+'"]["'+path[1]+'"]');
-                  if (document[path[0]][path[1]]._inherit != modifier[m][field]._inherit)
-                    throw new Meteor.Error('_inherit can not be changed: document["'+path[0]+'"]["'+path[1]+'"]');
-                } else if ('_inherit' in modifier[m][field])
-                  throw new Meteor.Error('_inherit can not be changed');
-
-                if (document[path[0]][path[1]].__inherit) {
-                  if (!('__inherit' in modifier[m][field]))
-                    throw new Meteor.Error('__inherit not found: document["'+path[0]+'"]["'+path[1]+'"]');
-                  if (document[path[0]][path[1]].__inherit != modifier[m][field].__inherit)
-                    throw new Meteor.Error('__inherit can not be changed: document["'+path[0]+'"]["'+path[1]+'"]');
-                } else if ('__inherit' in modifier[m][field])
-                  throw new Meteor.Error('__inherit can not be changed');
-              }
-
-              if (_trees[tree._name].handler.update) {
-                if (!_trees[tree._name].handler.update.call({ action: 'update' }, userId, collection, fields, modifier[m][field], document, fields, modifier))
-                  throw new Meteor.Error('access denied: you can not update the link "'+modifier[m][field]['_id']+'" in the document "'+document._id+'"');
-              }
-            } else if (m == '$unset') {
-              if (path.length == 2) {
-                if ('_id' in modifier[m][field] || '_link' in modifier[m][field] || '_inherit' in modifier[m][field] || '__inherit' in modifier[m][field])
-                  throw new Meteor.Error('required keys can not be changed');
-              }
-            } else
-              throw new Meteor.Error('"'+m+'" is forbidden modifier to tree links.');
-          } else if ((path.length == 3) && (path[2] == '_id' || path[2] == '_link' || path[2] == '_inherit' || path[2] == '__inherit')) {
-            throw new Meteor.Error('required keys can not be changed');
-          }
-        }
-      }
-    } else {
-      throw new Meteor.Error('it is forbidden the full document update.');
-    }
-  }
-};
-
-// (userId: any, collection: Mongo.Collection, document: Document) => throw new Meteor.Error
-Trees.checkRemove = function(userId, collection, document) {
-  var _fields = collection.trees();
-  for (var _field in _fields) {
-    if (_trees[_fields[_field]._name].handler.remove) {
-      if (_field in document) {
-        for (var l in document[_field]) {
-          if (!_trees[_fields[_field]._name].handler.remove.call({ action: 'remove' }, userId, collection, document[_field][l], document))
-            throw new Meteor.Error('access denied: you can not remove the link "'+document[_field][l]._id+'" in the document "'+document._id+'"');
-        }
-      }
-    }
-  }
-};
+		Inherit.find().observe({
+			added: function(document) {
+				var paths = This.find({
+					'_target.collection': document._source.collection,
+					'_target.id': document._source.id
+				});
+				paths.forEach(function(path) {
+					if (!Inherit.find({
+						'_source.collection': path._source.collection,
+						'_source.id': path._source.id,
+						'_target.collection': document._target.collection,
+						'_target.id': document._target.id,
+						'_inherit.collection': This._name,
+						'_inherit.id': path._id
+					}).count()) {
+						Inherit.insert({
+							_source: path._source,
+							_target: document._target,
+							_inherit: {
+								main: ('_inherit' in document)?document._inherit.main:document._id,
+								inherit: document._id,
+								collection: This._name,
+								id: path._id
+							}
+						});
+					}
+				});
+			},
+			removed: function(document) {
+				Inherit.remove({
+					'_inherit.inherit': document._id
+				});
+			}
+		});
+	};
+}
