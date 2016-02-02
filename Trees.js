@@ -34,13 +34,13 @@ Mongo.Collection.prototype.attachTree = function() {
 
 	Tree.helpers({
 		source: function() {
-			return Refs(Tree._source);
+			return Refs(this._source);
 		},
 		target: function() {
-			return Refs(Tree._target);
+			return Refs(this._target);
 		},
 		remove: function() {
-			return Tree.remove(Tree._inherit?Tree._inherit.root:Tree._id);
+			return Tree.remove(this._inherit?this._inherit.root:this._id);
 		}
 	});
 };
