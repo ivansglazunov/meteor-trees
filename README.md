@@ -92,6 +92,9 @@ A.update("7", { $set: { _source: C.findOne('2').Ref() } });
 
 ## Versions
 
+### 1.1.2
+* Added `link.root()` helper.
+
 ### 1.1.1
 * Fix this context in helpers.
 

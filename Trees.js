@@ -41,6 +41,9 @@ Mongo.Collection.prototype.attachTree = function() {
 		},
 		remove: function() {
 			return Tree.remove(this._inherit?this._inherit.root:this._id);
+		},
+		root: function() {
+			return this._inherit?Tree.findOne(this._inherit.root):this._id;
 		}
 	});
 };
