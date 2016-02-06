@@ -46,6 +46,19 @@ Mongo.Collection.prototype.attachTree = function() {
 			return this._inherit?Tree.findOne(this._inherit.root):this._id;
 		}
 	});
+	
+	Tree.attachSchema(new SimpleSchema({
+		_source: { type: Refs.Schema },
+		_target: { type: Refs.Schema },
+		_inherit: {
+			type: new SimpleSchema({
+				root: { type: String },
+				path: { type: Refs.Schema },
+				prev: { type: String }
+			}),
+			optional: true
+		}
+	}));
 };
 
 if (Meteor.isServer) {

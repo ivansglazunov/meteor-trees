@@ -11,8 +11,9 @@ Oriented graph with maintaining of integrity and inheritance.
 Identifiers are replaced by simple numbers for easy reading.
 
 ```js
-// Default SimpleSchema of Tree Link. 
-var Schema = new SimpleSchema({
+// Default SimpleSchema of Tree Link.
+// Already applied in attachTree, but you can specify any more schemas.
+new SimpleSchema({
 	_source: { type: Refs.Schema },
 	_target: { type: Refs.Schema },
 	_inherit: {
@@ -28,9 +29,6 @@ var Schema = new SimpleSchema({
 A = new Mongo.Collection('A');
 B = new Mongo.Collection('B');
 C = new Mongo.Collection('C');
-
-A.attachSchema(Schema);
-B.attachSchema(Schema);
 
 A.attachRefs();
 B.attachRefs();
@@ -91,6 +89,9 @@ A.update("7", { $set: { _source: C.findOne('2').Ref() } });
 ```
 
 ## Versions
+
+### 1.1.3
+* Default SimpleSchema defined on tree attaching.
 
 ### 1.1.2
 * Added `link.root()` helper.
