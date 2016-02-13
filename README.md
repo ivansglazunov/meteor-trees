@@ -90,6 +90,11 @@ A.update("7", { $set: { _source: C.findOne('2').Ref() } });
 
 ## Versions
 
+### 1.1.4
+* Replacing cursor observers on `matb33:collection-hooks`.
+* Fix many bags.
+* Add server method `collection.mirrorTargetsFromTree(Tree: Mongo.Collection, field: String)`.
+
 ### 1.1.3
 * Default SimpleSchema defined on tree attaching.
 

@@ -70,85 +70,123 @@ if (Meteor.isServer) {
 		if (!(Inherit._name in trees))
 			throw new Meteor.Error('Collection '+Inherit._name+' is not a tree.');
 		if (Inherit._name in trees[Tree._name].inherit)
-			throw new Meteor.Error('Tree '+Inherit._name+' is already inherited in tree '+This._name+'.');
+			throw new Meteor.Error('Tree '+Inherit._name+' is already inherited in tree '+Tree._name+'.');
 
 		trees[Tree._name].inherit[Inherit._name] = true;
 
-		Tree.find().observe({
-			added: function(document) {
-				var inherits = Inherit.find({
-					'_source.collection': document._target.collection,
-					'_source.id': document._target.id
-				});
-				inherits.forEach(function (inherit) {
-					var root = ('_inherit' in inherit)?inherit._inherit.root:inherit._id;
-					if (!Inherit.find({
-						'_source.collection': document._source.collection,
-						'_source.id': document._source.id,
-						'_target.collection': inherit._target.collection,
-						'_target.id': inherit._target.id,
-						'_inherit.root': root,
-						'_inherit.prev': inherit._id,
-						'_inherit.path.collection': Tree._name,
-						'_inherit.path.id': document._id
-					}).count()) {
-						Inherit.insert({
-							_source: document._source,
-							_target: inherit._target,
-							_inherit: {
-								root: root,
-								prev: inherit._id,
-								path: {
-									collection: Tree._name,
-									id: document._id
-								}
-							}
-						});
-					}
-				});
-			},
-			removed: function(document) {
-				Inherit.remove({
+		Tree.after.insert(function(userId, document) {
+			var inherits = Inherit.direct.find({
+				'_source.collection': document._target.collection,
+				'_source.id': document._target.id
+			});
+			inherits.forEach(function (inherit) {
+				var root = ('_inherit' in inherit)?inherit._inherit.root:inherit._id;
+				if (!Inherit.direct.find({
+					'_source.collection': document._source.collection,
+					'_source.id': document._source.id,
+					'_target.collection': inherit._target.collection,
+					'_target.id': inherit._target.id,
+					'_inherit.root': root,
+					'_inherit.prev': inherit._id,
 					'_inherit.path.collection': Tree._name,
 					'_inherit.path.id': document._id
-				});
-			}
+				}).count()) {
+					Inherit.direct.insert({
+						_source: document._source,
+						_target: inherit._target,
+						_inherit: {
+							root: root,
+							prev: inherit._id,
+							path: {
+								collection: Tree._name,
+								id: document._id
+							}
+						}
+					});
+				}
+			});
+		});
+		Tree.after.remove(function(userId, document) {
+			Inherit.direct.remove({
+				'_inherit.path.collection': Tree._name,
+				'_inherit.path.id': document._id
+			});
 		});
 
-		Inherit.find().observe({
-			added: function(document) {
-				var paths = Tree.find({
-					'_target.collection': document._source.collection,
-					'_target.id': document._source.id
-				});
-				paths.forEach(function(path) {
-					if (!Inherit.find({
-						'_source.collection': path._source.collection,
-						'_source.id': path._source.id,
-						'_target.collection': document._target.collection,
-						'_target.id': document._target.id,
-						'_inherit.path.collection': Tree._name,
-						'_inherit.path.id': path._id
-					}).count()) {
-						Inherit.insert({
-							_source: path._source,
-							_target: document._target,
-							_inherit: {
-								root: ('_inherit' in document)?document._inherit.root:document._id,
-								prev: document._id,
-								path: {
-									collection: Tree._name,
-									id: path._id
-								}
+		Inherit.after.insert(function(userId, document) {
+			var paths = Tree.direct.find({
+				'_target.collection': document._source.collection,
+				'_target.id': document._source.id
+			});
+			paths.forEach(function(path) {
+				if (!Inherit.direct.find({
+					'_source.collection': path._source.collection,
+					'_source.id': path._source.id,
+					'_target.collection': document._target.collection,
+					'_target.id': document._target.id,
+					'_inherit.path.collection': Tree._name,
+					'_inherit.path.id': path._id,
+					$or: [
+						{'_inherit.root': ('_inherit' in document)?document._inherit.root:document._id},
+						{'_id': ('_inherit' in document)?document._inherit.root:document._id}
+					]
+				}).count()) {
+					Inherit.direct.insert({
+						_source: path._source,
+						_target: document._target,
+						_inherit: {
+							root: ('_inherit' in document)?document._inherit.root:document._id,
+							prev: document._id,
+							path: {
+								collection: Tree._name,
+								id: path._id
 							}
-						});
-					}
-				});
+						}
+					});
+				}
+			});
+		});
+		Inherit.after.remove(function(userId, document) {
+			Inherit.direct.remove({
+				'_inherit.prev': document._id
+			});
+		});
+	};
+}
+
+if (Meteor.isServer) {
+	Mongo.Collection.prototype.mirrorTargetsFromTree = function(Tree, field) {
+		var Collection = this;
+
+		if (!(Tree._name in trees))
+			throw new Meteor.Error('Collection '+Tree._name+' is not a tree.');
+
+		Tree.find({ '_source.collection': Collection._name }).observe({
+			added: function(document) {
+				var query = {};
+				query._id = document._source.id;
+				query[field] = { $elemMatch: { id: document._target.id, collection: document._target.collection }};
+				if (!Collection.direct.find(query).count()) {
+					var $push = {};
+					$push[field] = document._target;
+					Collection.direct.update(document._source.id, {
+						$push: $push
+					});
+				}
 			},
 			removed: function(document) {
-				Inherit.remove({
-					'_inherit.prev': document._id
-				});
+				var document = Tree._transform(document);
+				var anotherEqualLinks = Tree.direct.find(lodash.merge(
+					document.source().Ref('_source'),
+					document.target().Ref('_target')
+				));
+				if (!anotherEqualLinks.count()) {
+					var $pull = {};
+					$pull[field] = document._target;
+					Collection.direct.update(document._source.id, {
+						$pull: $pull
+					});
+				}
 			}
 		});
 	};

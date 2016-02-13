@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ivansglazunov:trees',
-  version: '1.1.3',
+  version: '1.1.4',
   summary: 'Oriented graph with maintaining of integrity and inheritance.',
   git: 'https://github.com/ivansglazunov/meteor-trees',
   documentation: 'README.md'
@@ -12,6 +12,8 @@ Package.onUse(function(api) {
   api.use('ecmascript');
   api.use('random');
   api.use('dburles:mongo-collection-instances@0.3.5');
+  api.use('lai:collection-extensions@0.2.1');
+  api.use('matb33:collection-hooks@0.8.1');
   api.use('stevezhu:lodash@4.0.0');
   api.use('ivansglazunov:refs@0.0.0');
   api.use('aldeed:simple-schema@1.5.3');
