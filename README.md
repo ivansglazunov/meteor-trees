@@ -30,10 +30,6 @@ A = new Mongo.Collection('A');
 B = new Mongo.Collection('B');
 C = new Mongo.Collection('C');
 
-A.attachRefs();
-B.attachRefs();
-C.attachRefs();
-
 A.attachTree();
 B.attachTree();
 
@@ -103,6 +99,9 @@ A.update("7", { $set: { _source: C.findOne('2').Ref() } });
 - [x] tree.unlinkFrom(source: Document|Ref, query: Object, callback: Function) => Number
 
 ## Versions
+
+### 1.1.6
+* `ivansglazunov:refs@0.1.0`
 
 ### 1.1.5
 * Fixes and refactoring.
