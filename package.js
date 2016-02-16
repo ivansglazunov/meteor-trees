@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ivansglazunov:trees',
-  version: '1.1.4',
+  version: '1.1.5',
   summary: 'Oriented graph with maintaining of integrity and inheritance.',
   git: 'https://github.com/ivansglazunov/meteor-trees',
   documentation: 'README.md'
@@ -19,5 +19,8 @@ Package.onUse(function(api) {
   api.use('aldeed:simple-schema@1.5.3');
   api.use('aldeed:collection2@2.8.0');
   api.use('raix:eventemitter@0.1.3');
-  api.addFiles('Trees.js');
+  
+  api.addFiles('trees.js');
+  api.addFiles('mirror.js', 'server');
+  api.addFiles('inherit.js', 'server');
 });
