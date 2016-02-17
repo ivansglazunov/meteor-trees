@@ -91,14 +91,17 @@ A.update("7", { $set: { _source: C.findOne('2').Ref() } });
 - [x] tree.inheritTree(Inherit: Mongo.Collection)
 - [x] tree.mirrorTreeTargetsToSourceField(Tree: Mongo.Collection, field: String)
 - [x] tree.addLink(source: Document|Ref, target: Document|Ref, insert: Object, callback: Function) => id: String
-- [x] tree.linksTo(target: Document|Ref, query: Object, options: Object) => Cursor
-- [x] tree.linksFrom(source: Document|Ref, query: Object, options: Object) => Cursor
-- [x] tree.linkTo(target: Document|Ref, query: Object, options: Object) => Link
-- [x] tree.linkFrom(source: Document|Ref, query: Object, options: Object) => Link
-- [x] tree.unlinkTo(target: Document|Ref, query: Object, callback: Function) => Number
-- [x] tree.unlinkFrom(source: Document|Ref, query: Object, callback: Function) => Number
+- [x] tree.linksTo(target: Document|Ref|(id: String), query: Object, options: Object) => Cursor
+- [x] tree.linksFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Cursor
+- [x] tree.linkTo(target: Document|Ref|(id: String), query: Object, options: Object) => Link
+- [x] tree.linkFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Link
+- [x] tree.unlinkTo(target: Document|Ref|(id: String), query: Object, callback: Function) => Number
+- [x] tree.unlinkFrom(source: Document|Ref|(id: String), query: Object, callback: Function) => Number
 
 ## Versions
+
+### 1.1.7
+* Support for find links in tree by id without collection.
 
 ### 1.1.6
 * `ivansglazunov:refs@0.1.0`

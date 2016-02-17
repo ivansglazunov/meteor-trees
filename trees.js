@@ -11,39 +11,75 @@ methods.addLink = function(source, target, insert, callback) {
 	return this.insert(insert?lodash.merge(query, insert):query, callback);
 };
 
-// tree.linksTo(target: Document|Ref, query: Object, options: Object) => Cursor
+// tree.linksTo(target: Document|Ref|(id: String), query: Object, options: Object) => Cursor
 methods.linksTo = function(target, find, options) {
-	var query = 'Ref' in target?target.Ref('_target'):{'_target.collection':target.collection,'_target.id':target.id};
+	if ('Ref' in target) {
+		var query = target.Ref('_target');
+	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
+		var query = {'_target.collection':target.collection,'_target.id':target.id};
+	} else if (typeof(target) == 'string') {
+		var query = {'_target.id':target.id};
+	} else throw new Meteor.Error('target: Document|Ref|(id: String)');
 	return this.find(find?lodash.merge(query, find):query, options);
 };
 
-// tree.linksFrom(source: Document|Ref, query: Object, options: Object) => Cursor
+// tree.linksFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Cursor
 methods.linksFrom = function(source, find, options) {
-	var query = 'Ref' in source?source.Ref('_source'):{'_source.collection':source.collection,'_source.id':source.id};
+	if ('Ref' in source) {
+		var query = source.Ref('_source');
+	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
+		var query = {'_source.collection':source.collection,'_source.id':source.id};
+	} else if (typeof(source) == 'string') {
+		var query = {'_source.id':source.id};
+	} else throw new Meteor.Error('source: Document|Ref|(id: String)');
 	return this.find(find?lodash.merge(query, find):query, options);
 };
 
-// tree.linkTo(target: Document|Ref, query: Object, options: Object) => Link
+// tree.linkTo(target: Document|Ref|(id: String), query: Object, options: Object) => Link
 methods.linkTo = function(target, find, options) {
-	var query = 'Ref' in target?target.Ref('_target'):{'_target.collection':target.collection,'_target.id':target.id};
+	if ('Ref' in target) {
+		var query = target.Ref('_target');
+	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
+		var query = {'_target.collection':target.collection,'_target.id':target.id};
+	} else if (typeof(target) == 'string') {
+		var query = {'_target.id':target.id};
+	} else throw new Meteor.Error('target: Document|Ref|(id: String)');
 	return this.findOne(find?lodash.merge(query, find):query, options);
 };
 
-// tree.linkFrom(source: Document|Ref, query: Object, options: Object) => Link
+// tree.linkFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Link
 methods.linkFrom = function(source, find, options) {
-	var query = 'Ref' in source?source.Ref('_source'):{'_source.collection':source.collection,'_source.id':source.id};
+	if ('Ref' in source) {
+		var query = source.Ref('_source');
+	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
+		var query = {'_source.collection':source.collection,'_source.id':source.id};
+	} else if (typeof(source) == 'string') {
+		var query = {'_source.id':source.id};
+	} else throw new Meteor.Error('source: Document|Ref|(id: String)');
 	return this.findOne(find?lodash.merge(query, find):query, options);
 };
 
-// tree.unlinkTo(target: Document|Ref, query: Object, callback: Function) => Number
+// tree.unlinkTo(target: Document|Ref|(id: String), query: Object, callback: Function) => Number
 methods.unlinkTo = function(target, find, callback) {
-	var query = 'Ref' in target?target.Ref('_target'):{'_target.collection':target.collection,'_target.id':target.id};
+	if ('Ref' in target) {
+		var query = target.Ref('_target');
+	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
+		var query = {'_target.collection':target.collection,'_target.id':target.id};
+	} else if (typeof(target) == 'string') {
+		var query = {'_target.id':target.id};
+	} else throw new Meteor.Error('target: Document|Ref|(id: String)');
 	return this.remove(find?lodash.merge(query, find):query, callback);
 };
 
-// tree.unlinkFrom(source: Document|Ref, query: Object, callback: Function) => Number
+// tree.unlinkFrom(source: Document|Ref|(id: String), query: Object, callback: Function) => Number
 methods.unlinkFrom = function(source, find, callback) {
-	var query = 'Ref' in source?source.Ref('_source'):{'_source.collection':source.collection,'_source.id':source.id};
+	if ('Ref' in source) {
+		var query = source.Ref('_source');
+	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
+		var query = {'_source.collection':source.collection,'_source.id':source.id};
+	} else if (typeof(source) == 'string') {
+		var query = {'_source.id':source.id};
+	} else throw new Meteor.Error('source: Document|Ref|(id: String)');
 	return this.remove(find?lodash.merge(query, find):query, callback);
 };
 
