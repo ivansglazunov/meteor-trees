@@ -11,9 +11,49 @@ methods.addLink = function(source, target, insert, callback) {
 	return this.insert(insert?lodash.merge(query, insert):query, callback);
 };
 
+// tree.links(source: Document|Ref|(id: String), target: Document|Ref|(id: String), query: Object, options: Object) => Cursor
+methods.links = function(source, target, find, options) {
+	var query = {};
+	if (typeof(source) == 'object' && 'Ref' in source) {
+		lodash.merge(query, source.Ref('_source'));
+	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
+		lodash.merge(query, {'_source.collection':source.collection,'_source.id':source.id});
+	} else if (typeof(source) == 'string') {
+		lodash.merge(query, {'_source.id':source.id});
+	} else throw new Meteor.Error('source: Document|Ref|(id: String)');
+	if (typeof(target) == 'object' && 'Ref' in target) {
+		lodash.merge(query, target.Ref('_target'));
+	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
+		lodash.merge(query, {'_target.collection':target.collection,'_target.id':target.id});
+	} else if (typeof(target) == 'string') {
+		lodash.merge(query, {'_target.id':target.id});
+	} else throw new Meteor.Error('target: Document|Ref|(id: String)');
+	return this.find(find?lodash.merge(query, find):query, options);
+};
+
+// tree.link(source: Document|Ref|(id: String), target: Document|Ref|(id: String), query: Object, options: Object) => Link|undefined
+methods.link = function(source, target, find, options) {
+	var query = {};
+	if (typeof(source) == 'object' && 'Ref' in source) {
+		lodash.merge(query, source.Ref('_source'));
+	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
+		lodash.merge(query, {'_source.collection':source.collection,'_source.id':source.id});
+	} else if (typeof(source) == 'string') {
+		lodash.merge(query, {'_source.id':source.id});
+	} else throw new Meteor.Error('source: Document|Ref|(id: String)');
+	if (typeof(target) == 'object' && 'Ref' in target) {
+		lodash.merge(query, target.Ref('_target'));
+	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
+		lodash.merge(query, {'_target.collection':target.collection,'_target.id':target.id});
+	} else if (typeof(target) == 'string') {
+		lodash.merge(query, {'_target.id':target.id});
+	} else throw new Meteor.Error('target: Document|Ref|(id: String)');
+	return this.findOne(find?lodash.merge(query, find):query, options);
+};
+
 // tree.linksTo(target: Document|Ref|(id: String), query: Object, options: Object) => Cursor
 methods.linksTo = function(target, find, options) {
-	if ('Ref' in target) {
+	if (typeof(target) == 'object' && 'Ref' in target) {
 		var query = target.Ref('_target');
 	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
 		var query = {'_target.collection':target.collection,'_target.id':target.id};
@@ -25,7 +65,7 @@ methods.linksTo = function(target, find, options) {
 
 // tree.linksFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Cursor
 methods.linksFrom = function(source, find, options) {
-	if ('Ref' in source) {
+	if (typeof(source) == 'object' && 'Ref' in source) {
 		var query = source.Ref('_source');
 	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
 		var query = {'_source.collection':source.collection,'_source.id':source.id};
@@ -35,9 +75,9 @@ methods.linksFrom = function(source, find, options) {
 	return this.find(find?lodash.merge(query, find):query, options);
 };
 
-// tree.linkTo(target: Document|Ref|(id: String), query: Object, options: Object) => Link
+// tree.linkTo(target: Document|Ref|(id: String), query: Object, options: Object) => Link|undefined
 methods.linkTo = function(target, find, options) {
-	if ('Ref' in target) {
+	if (typeof(target) == 'object' && 'Ref' in target) {
 		var query = target.Ref('_target');
 	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
 		var query = {'_target.collection':target.collection,'_target.id':target.id};
@@ -47,9 +87,9 @@ methods.linkTo = function(target, find, options) {
 	return this.findOne(find?lodash.merge(query, find):query, options);
 };
 
-// tree.linkFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Link
+// tree.linkFrom(source: Document|Ref|(id: String), query: Object, options: Object) => Link|undefined
 methods.linkFrom = function(source, find, options) {
-	if ('Ref' in source) {
+	if (typeof(source) == 'object' && 'Ref' in source) {
 		var query = source.Ref('_source');
 	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
 		var query = {'_source.collection':source.collection,'_source.id':source.id};
@@ -61,7 +101,7 @@ methods.linkFrom = function(source, find, options) {
 
 // tree.unlinkTo(target: Document|Ref|(id: String), query: Object, callback: Function) => Number
 methods.unlinkTo = function(target, find, callback) {
-	if ('Ref' in target) {
+	if (typeof(target) == 'object' && 'Ref' in target) {
 		var query = target.Ref('_target');
 	} else if (typeof(target) == 'object' && 'id' in target && 'collection' in target) {
 		var query = {'_target.collection':target.collection,'_target.id':target.id};
@@ -73,7 +113,7 @@ methods.unlinkTo = function(target, find, callback) {
 
 // tree.unlinkFrom(source: Document|Ref|(id: String), query: Object, callback: Function) => Number
 methods.unlinkFrom = function(source, find, callback) {
-	if ('Ref' in source) {
+	if (typeof(source) == 'object' && 'Ref' in source) {
 		var query = source.Ref('_source');
 	} else if (typeof(source) == 'object' && 'id' in source && 'collection' in source) {
 		var query = {'_source.collection':source.collection,'_source.id':source.id};
