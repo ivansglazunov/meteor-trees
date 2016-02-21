@@ -1,6 +1,6 @@
 Package.describe({
   name: 'ivansglazunov:trees',
-  version: '1.1.8',
+  version: '1.1.9',
   summary: 'Oriented graph with maintaining of integrity and inheritance.',
   git: 'https://github.com/ivansglazunov/meteor-trees',
   documentation: 'README.md'

@@ -101,6 +101,9 @@ A.update("7", { $set: { _source: C.findOne('2').Ref() } });
 
 ## Versions
 
+### 1.1.9
+* Return observers for direct clean data.
+
 ### 1.1.8
 * `link` `links`
 
