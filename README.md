@@ -1,10 +1,18 @@
-# Trees
+# ~~Trees~~ DEPRECATED
 
 ```
 meteor add ivansglazunov:trees
 ```
 
 Oriented graph with maintaining of integrity and inheritance.
+
+---
+
+New version of trees as graphs: [shuttler:graphs](https://github.com/meteor-shuttler/graphs).
+
+New version of trees.inherit as graph selection: [shuttler:selection](https://github.com/meteor-shuttler/selection).
+
+---
 
 ## Example
 
